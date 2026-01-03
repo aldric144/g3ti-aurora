@@ -218,6 +218,7 @@ class ThreatObject(BaseModel):
     
     region_context: Optional[dict] = Field(default=None, description="Phase 2: Region-Aware Intelligence context")
     escalation_pathway: Optional[dict] = Field(default=None, description="Phase 2: Escalation Pathway model")
+    threat_class_alignment: Optional[dict] = Field(default=None, description="Probabilistic Threat Class Alignment result")
     
     status: str = Field(default="active", description="Threat status: active, resolved, archived")
     
@@ -525,4 +526,123 @@ class DrillDownResponse(BaseModel):
             "All data remains abstracted and non-attributive"
         ],
         description="Policy compliance confirmation"
+    )
+
+
+class ThreatClassCategory(str, Enum):
+    """
+    Probabilistic Threat Class Taxonomy - Analytic Categories Only
+    
+    These are analytic pattern categories, NOT criminal labels or accusations.
+    Classes are non-exclusive and probabilistic.
+    
+    POLICY-SAFE: No enforcement framing, no identity attribution.
+    """
+    SOCIOECONOMIC_INSTABILITY = "socioeconomic_instability"
+    CIVIL_UNREST_PROTEST = "civil_unrest_protest"
+    IDEOLOGICAL_MOBILIZATION = "ideological_mobilization"
+    LONE_ACTOR_GRIEVANCE = "lone_actor_grievance"
+    INSIDER_GRIEVANCE_DISRUPTION = "insider_grievance_disruption"
+    CYBER_PHYSICAL_CONVERGENCE = "cyber_physical_convergence"
+    INFRASTRUCTURE_DISRUPTION = "infrastructure_disruption"
+    COORDINATED_DISINFORMATION = "coordinated_disinformation"
+
+
+class ThreatClassAlignment(BaseModel):
+    """
+    Individual threat class alignment with probabilistic weighting.
+    
+    Represents analytic pattern similarity, not prediction or accusation.
+    """
+    class_category: ThreatClassCategory = Field(..., description="Analytic threat class category")
+    alignment_score: float = Field(..., ge=0, le=1, description="Probabilistic alignment score (0-1)")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence in this alignment")
+    
+    primary_contributing_domains: list[str] = Field(
+        default_factory=list, 
+        description="Signal domains contributing to this alignment"
+    )
+    intent_stage_influence: float = Field(
+        default=0.0, ge=0, le=1,
+        description="How much intent stage influenced this alignment"
+    )
+    escalation_pathway_influence: float = Field(
+        default=0.0, ge=0, le=1,
+        description="How much escalation pathway influenced this alignment"
+    )
+    velocity_influence: float = Field(
+        default=0.0, ge=0, le=1,
+        description="How much temporal velocity influenced this alignment"
+    )
+    
+    rationale: str = Field(..., description="Explainable rationale for this alignment")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "class_category": "socioeconomic_instability",
+                "alignment_score": 0.72,
+                "confidence": 0.68,
+                "primary_contributing_domains": ["environmental_stressor", "social_discourse"],
+                "intent_stage_influence": 0.35,
+                "escalation_pathway_influence": 0.25,
+                "velocity_influence": 0.15,
+                "rationale": "Signal composition shows strong economic stress indicators combined with grievance discourse patterns typical of socioeconomic instability scenarios."
+            }
+        }
+
+
+class ThreatClassAlignmentResult(BaseModel):
+    """
+    Probabilistic Threat Class Alignment - Complete Result
+    
+    Expresses what category of threat a pattern most closely resembles
+    using probabilistic analytic alignment.
+    
+    CRITICAL CONSTRAINTS:
+    - NOT definitive labels, accusations, or enforcement framing
+    - Pre-incident, non-investigative, non-attributive
+    - Multiple classes may be active simultaneously
+    - Percentages are relative likelihoods, not predictions
+    - No single class is required to reach 100%
+    """
+    threat_id: str = Field(..., description="Associated threat object ID")
+    
+    alignments: list[ThreatClassAlignment] = Field(
+        default_factory=list,
+        description="Ordered list of class alignments (highest score first)"
+    )
+    
+    top_alignment: Optional[ThreatClassCategory] = Field(
+        None, description="Highest-scoring class category"
+    )
+    
+    alignment_diversity: float = Field(
+        default=0.0, ge=0, le=1,
+        description="How distributed alignments are across classes (0=concentrated, 1=diverse)"
+    )
+    
+    intent_stage_at_computation: str = Field(
+        ..., description="Intent stage when alignment was computed"
+    )
+    escalation_stage_at_computation: int = Field(
+        default=0, description="Escalation pathway stage when alignment was computed"
+    )
+    
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    
+    disclaimer: str = Field(
+        default="Class alignment reflects analytic pattern similarity and may evolve as new signals emerge. These are probabilistic assessments, not predictions or accusations.",
+        description="Required disclaimer for all class alignment outputs"
+    )
+    
+    policy_notes: list[str] = Field(
+        default_factory=lambda: [
+            "Class alignments are analytic pattern similarities only",
+            "No identity attribution or individual labeling",
+            "No prediction of specific events or actions",
+            "No law-enforcement or investigative framing",
+            "Maintains pre-incident decision-intelligence posture"
+        ],
+        description="Policy compliance notes"
     )

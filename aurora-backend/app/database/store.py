@@ -25,6 +25,10 @@ from app.models.schemas import (
     MonitoringPosture,
     HistoricalAnalog,
     JurisdictionContext,
+    ThreatClassCategory,
+    ThreatClassAlignment,
+    ThreatClassAlignmentResult,
+    SignalDomain,
 )
 
 
@@ -378,6 +382,74 @@ class InMemoryStore:
                     "Pathway modeling is pattern-based, not predictive of specific incidents",
                     "Projections are for decision support only, not forecasting",
                     "No individual actors or specific events are predicted"
+                ]
+            },
+            threat_class_alignment={
+                "threat_id": "",
+                "alignments": [
+                    {
+                        "class_category": ThreatClassCategory.SOCIOECONOMIC_INSTABILITY.value,
+                        "alignment_score": 0.72,
+                        "confidence": 0.78,
+                        "primary_contributing_domains": ["environmental_stressor", "social_discourse"],
+                        "intent_stage_influence": 0.35,
+                        "escalation_pathway_influence": 0.20,
+                        "velocity_influence": 0.15,
+                        "rationale": "Signal composition shows strong environmental stress signals combined with social discourse patterns with patterns typical of socioeconomic stress scenarios. Cognitive fixation stage suggests elevated pattern consistency."
+                    },
+                    {
+                        "class_category": ThreatClassCategory.CIVIL_UNREST_PROTEST.value,
+                        "alignment_score": 0.58,
+                        "confidence": 0.72,
+                        "primary_contributing_domains": ["social_discourse", "behavioral_trend"],
+                        "intent_stage_influence": 0.40,
+                        "escalation_pathway_influence": 0.35,
+                        "velocity_influence": 0.25,
+                        "rationale": "Pattern alignment indicates social discourse patterns combined with behavioral trend indicators consistent with civil unrest or protest escalation dynamics. Cognitive fixation stage suggests elevated pattern consistency."
+                    },
+                    {
+                        "class_category": ThreatClassCategory.IDEOLOGICAL_MOBILIZATION.value,
+                        "alignment_score": 0.41,
+                        "confidence": 0.65,
+                        "primary_contributing_domains": ["social_discourse", "behavioral_trend"],
+                        "intent_stage_influence": 0.45,
+                        "escalation_pathway_influence": 0.30,
+                        "velocity_influence": 0.20,
+                        "rationale": "Discourse patterns and behavioral indicators suggest social discourse patterns combined with behavioral trend indicators aligned with ideological mobilization trajectories. Cognitive fixation stage suggests elevated pattern consistency."
+                    },
+                    {
+                        "class_category": ThreatClassCategory.COORDINATED_DISINFORMATION.value,
+                        "alignment_score": 0.35,
+                        "confidence": 0.58,
+                        "primary_contributing_domains": ["social_discourse"],
+                        "intent_stage_influence": 0.30,
+                        "escalation_pathway_influence": 0.40,
+                        "velocity_influence": 0.10,
+                        "rationale": "Discourse analysis reveals social discourse patterns with characteristics of coordinated information amplification patterns. Current stage shows moderate alignment with disinformation dynamics."
+                    },
+                    {
+                        "class_category": ThreatClassCategory.INFRASTRUCTURE_DISRUPTION.value,
+                        "alignment_score": 0.28,
+                        "confidence": 0.52,
+                        "primary_contributing_domains": ["environmental_stressor", "behavioral_trend"],
+                        "intent_stage_influence": 0.20,
+                        "escalation_pathway_influence": 0.25,
+                        "velocity_influence": 0.15,
+                        "rationale": "Environmental and behavioral indicators show environmental stress signals combined with behavioral trend indicators aligned with infrastructure disruption risk scenarios. Early stage reduces mobilization-related alignment."
+                    }
+                ],
+                "top_alignment": ThreatClassCategory.SOCIOECONOMIC_INSTABILITY.value,
+                "alignment_diversity": 0.62,
+                "intent_stage_at_computation": "cognitive_fixation",
+                "escalation_stage_at_computation": 1,
+                "last_updated": datetime.utcnow().isoformat(),
+                "disclaimer": "Class alignment reflects analytic pattern similarity and may evolve as new signals emerge. These are probabilistic assessments, not predictions or accusations.",
+                "policy_notes": [
+                    "Class alignments are analytic pattern similarities only",
+                    "No identity attribution or individual labeling",
+                    "No prediction of specific events or actions",
+                    "No law-enforcement or investigative framing",
+                    "Maintains pre-incident decision-intelligence posture"
                 ]
             },
             status="active"

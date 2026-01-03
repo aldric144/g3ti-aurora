@@ -121,6 +121,29 @@ interface EscalationPathway {
   policy_notes: string[];
 }
 
+interface ThreatClassAlignment {
+  class_category: string;
+  alignment_score: number;
+  confidence: number;
+  primary_contributing_domains: string[];
+  intent_stage_influence: number;
+  escalation_pathway_influence: number;
+  velocity_influence: number;
+  rationale: string;
+}
+
+interface ThreatClassAlignmentResult {
+  threat_id: string;
+  alignments: ThreatClassAlignment[];
+  top_alignment: string | null;
+  alignment_diversity: number;
+  intent_stage_at_computation: string;
+  escalation_stage_at_computation: number;
+  last_updated: string;
+  disclaimer: string;
+  policy_notes: string[];
+}
+
 interface ThreatDetail {
   id: string;
   name: string;
@@ -134,6 +157,7 @@ interface ThreatDetail {
   current_nio: NIO | null;
   region_context: RegionContext | null;
   escalation_pathway: EscalationPathway | null;
+  threat_class_alignment: ThreatClassAlignmentResult | null;
   created_at: string;
   updated_at: string;
 }
@@ -198,6 +222,17 @@ const DOMAIN_COLORS: Record<string, { bg: string; text: string; border: string; 
   social_discourse: { bg: 'bg-[#3EC1C9]/10', text: 'text-[#3EC1C9]', border: 'border-[#3EC1C9]/30', accent: '#3EC1C9' },
   behavioral_trend: { bg: 'bg-[#4F81BD]/10', text: 'text-[#4F81BD]', border: 'border-[#4F81BD]/30', accent: '#4F81BD' },
   environmental_stressor: { bg: 'bg-[#7A8CA3]/10', text: 'text-[#7A8CA3]', border: 'border-[#7A8CA3]/30', accent: '#7A8CA3' },
+};
+
+const THREAT_CLASS_LABELS: Record<string, string> = {
+  socioeconomic_instability: 'Socioeconomic Instability',
+  civil_unrest_protest: 'Civil Unrest / Protest Escalation',
+  ideological_mobilization: 'Ideological Mobilization',
+  lone_actor_grievance: 'Lone-Actor Grievance Risk',
+  insider_grievance_disruption: 'Insider / Grievance-Based Disruption',
+  cyber_physical_convergence: 'Cyber-Physical Convergence Risk',
+  infrastructure_disruption: 'Infrastructure Disruption Risk',
+  coordinated_disinformation: 'Coordinated Disinformation Amplification',
 };
 
 const getConfidenceOpacity = (confidence: number): string => {
@@ -942,7 +977,129 @@ function App() {
                       </Card>
                     )}
 
-                    {!selectedThreat.region_context && !selectedThreat.escalation_pathway && (
+                    {selectedThreat.threat_class_alignment && (
+                      <Card className="bg-[#121C2D] border-[#16233A]">
+                        <CardHeader>
+                          <div className="flex items-center gap-2">
+                            <Target className="h-5 w-5 text-[#7A8CA3]" />
+                            <CardTitle className="text-lg text-white">Threat Class Alignment (Analytic)</CardTitle>
+                          </div>
+                          <CardDescription className="text-[#9FB0C7]">
+                            Probabilistic pattern similarity — classes are non-exclusive and may evolve
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-3">
+                            {selectedThreat.threat_class_alignment.alignments.map((alignment, idx) => {
+                              const isTopAlignment = alignment.class_category === selectedThreat.threat_class_alignment!.top_alignment;
+                              const barWidth = Math.round(alignment.alignment_score * 100);
+                              return (
+                                <div key={idx} className={`bg-[#16233A] rounded-lg p-4 ${isTopAlignment ? 'border border-[#7A8CA3]/50' : ''}`}>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`font-medium ${isTopAlignment ? 'text-white' : 'text-[#C9D4E3]'}`}>
+                                        {THREAT_CLASS_LABELS[alignment.class_category] || alignment.class_category}
+                                      </span>
+                                      {isTopAlignment && (
+                                        <Badge className="bg-[#7A8CA3]/15 text-[#7A8CA3] border border-[#7A8CA3]/30 text-xs">
+                                          Top Alignment
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-lg font-bold text-white">{(alignment.alignment_score * 100).toFixed(0)}%</span>
+                                      <span className="text-xs text-[#9FB0C7]">conf: {(alignment.confidence * 100).toFixed(0)}%</span>
+                                    </div>
+                                  </div>
+                                  <div className="w-full bg-[#0B1220] rounded-full h-2 mb-3">
+                                    <div 
+                                      className="h-2 rounded-full transition-all duration-300"
+                                      style={{ 
+                                        width: `${barWidth}%`,
+                                        backgroundColor: isTopAlignment ? '#7A8CA3' : '#4F81BD',
+                                        opacity: 0.6 + (alignment.confidence * 0.4)
+                                      }}
+                                    />
+                                  </div>
+                                  <details className="group">
+                                    <summary className="text-xs text-[#9FB0C7] cursor-pointer hover:text-[#C9D4E3] transition-colors">
+                                      View alignment rationale
+                                    </summary>
+                                    <div className="mt-3 space-y-2 text-xs">
+                                      <p className="text-[#D8E2EF] leading-5">{alignment.rationale}</p>
+                                      <div className="grid grid-cols-3 gap-2 mt-2">
+                                        <div className="bg-[#0B1220] rounded p-2">
+                                          <div className="text-[#9FB0C7]">Intent Stage</div>
+                                          <div className="text-[#C9D4E3] font-medium">{(alignment.intent_stage_influence * 100).toFixed(0)}% influence</div>
+                                        </div>
+                                        <div className="bg-[#0B1220] rounded p-2">
+                                          <div className="text-[#9FB0C7]">Escalation Path</div>
+                                          <div className="text-[#C9D4E3] font-medium">{(alignment.escalation_pathway_influence * 100).toFixed(0)}% influence</div>
+                                        </div>
+                                        <div className="bg-[#0B1220] rounded p-2">
+                                          <div className="text-[#9FB0C7]">Velocity</div>
+                                          <div className="text-[#C9D4E3] font-medium">{(alignment.velocity_influence * 100).toFixed(0)}% influence</div>
+                                        </div>
+                                      </div>
+                                      {alignment.primary_contributing_domains.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                          <span className="text-[#9FB0C7]">Contributing domains:</span>
+                                          {alignment.primary_contributing_domains.map((domain, dIdx) => (
+                                            <Badge key={dIdx} variant="outline" className="border-[#4F81BD]/30 text-[#C9D4E3] text-xs">
+                                              {DOMAIN_LABELS[domain] || domain}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </details>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-1">Alignment Diversity</div>
+                              <div className="text-2xl font-bold text-white">{(selectedThreat.threat_class_alignment.alignment_diversity * 100).toFixed(0)}%</div>
+                              <div className="text-xs text-[#9FB0C7] mt-1">
+                                {selectedThreat.threat_class_alignment.alignment_diversity > 0.5 ? 'Distributed across classes' : 'Concentrated alignment'}
+                              </div>
+                            </div>
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-1">Computed At</div>
+                              <div className="text-sm text-white">
+                                Stage: {STAGE_LABELS[selectedThreat.threat_class_alignment.intent_stage_at_computation]?.split(':')[1]?.trim() || selectedThreat.threat_class_alignment.intent_stage_at_computation}
+                              </div>
+                              <div className="text-xs text-[#9FB0C7] mt-1">
+                                Escalation Stage: {selectedThreat.threat_class_alignment.escalation_stage_at_computation + 1}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <Alert className="bg-[#0B1220] border-[#7A8CA3]/30">
+                            <Shield className="h-4 w-4 text-[#7A8CA3]" />
+                            <AlertTitle className="text-[#7A8CA3] text-sm">Analytic Disclaimer</AlertTitle>
+                            <AlertDescription className="text-[#9FB0C7] text-xs">
+                              {selectedThreat.threat_class_alignment.disclaimer}
+                            </AlertDescription>
+                          </Alert>
+                          
+                          <div className="bg-[#16233A] rounded-lg p-3">
+                            <div className="text-xs text-[#9FB0C7] mb-2">Policy Compliance</div>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedThreat.threat_class_alignment.policy_notes.map((note, idx) => (
+                                <Badge key={idx} variant="outline" className="border-[#7A8CA3]/30 text-[#9FB0C7] text-xs">
+                                  {note}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {!selectedThreat.region_context && !selectedThreat.escalation_pathway && !selectedThreat.threat_class_alignment && (
                       <Alert className="bg-[#16233A] border-[#16233A]">
                         <AlertTriangle className="h-4 w-4 text-[#F4B400]" />
                         <AlertTitle className="text-white">Situational Awareness Data Unavailable</AlertTitle>
