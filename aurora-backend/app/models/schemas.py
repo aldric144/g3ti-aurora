@@ -216,6 +216,9 @@ class ThreatObject(BaseModel):
     current_nio: Optional[NarrativeIntelligenceObject] = None
     nio_history: list[str] = Field(default_factory=list, description="Previous NIO IDs")
     
+    region_context: Optional[dict] = Field(default=None, description="Phase 2: Region-Aware Intelligence context")
+    escalation_pathway: Optional[dict] = Field(default=None, description="Phase 2: Escalation Pathway model")
+    
     status: str = Field(default="active", description="Threat status: active, resolved, archived")
     
     audit_trail: list[str] = Field(default_factory=list, description="Audit entry IDs")
@@ -373,3 +376,153 @@ class JurisdictionSummary(BaseModel):
     code: str
     name: str
     region: str
+
+
+class RegionGranularity(str, Enum):
+    """
+    Region granularity levels for authorized drill-down.
+    Macro → Sub-region progression without precise geolocation.
+    """
+    MACRO = "macro"
+    REGIONAL = "regional"
+    SUB_REGIONAL = "sub_regional"
+
+
+class RegionContext(BaseModel):
+    """
+    Region-Aware Intelligence - Safe "Where"
+    
+    Abstracted geographic context layer that:
+    - Identifies primary and secondary regions (e.g., multi-state, metro-adjacent, regional corridors)
+    - Avoids exact locations, maps, or pinpoint coordinates
+    - Includes confidence scoring for regional attribution
+    
+    POLICY-SAFE: No precise geolocation, no map pins, no targeting.
+    """
+    primary_region: str = Field(..., description="Primary abstracted region (e.g., 'Midwest Corridor', 'Northeast Metro-Adjacent')")
+    secondary_regions: list[str] = Field(default_factory=list, description="Secondary/adjacent regions of relevance")
+    region_type: str = Field(..., description="Region classification (e.g., 'multi-state', 'metro-adjacent', 'regional corridor')")
+    
+    attribution_confidence: float = Field(..., ge=0, le=1, description="Confidence in regional attribution (0-1)")
+    attribution_rationale: str = Field(..., description="Explanation of regional attribution logic")
+    
+    population_scale: str = Field(default="unspecified", description="Abstracted population scale (e.g., 'large metro', 'mid-size regional', 'rural corridor')")
+    economic_profile: str = Field(default="unspecified", description="Abstracted economic profile (e.g., 'manufacturing-dependent', 'service-economy', 'mixed')")
+    
+    granularity_level: RegionGranularity = Field(default=RegionGranularity.MACRO, description="Current drill-down granularity level")
+    
+    policy_notes: list[str] = Field(
+        default_factory=lambda: [
+            "Region context is abstracted and non-targeting",
+            "No precise coordinates or map pins are provided",
+            "Regional attribution is pattern-based, not surveillance-derived"
+        ],
+        description="Policy compliance notes"
+    )
+
+
+class EscalationPathwayStage(BaseModel):
+    """Individual stage within an escalation pathway"""
+    stage_name: str = Field(..., description="Stage name in the pathway")
+    stage_description: str = Field(..., description="Description of this stage")
+    typical_indicators: list[str] = Field(default_factory=list, description="Typical indicators at this stage")
+    typical_duration_hours: tuple[float, float] = Field(default=(24, 168), description="Typical duration range (min, max hours)")
+    transition_triggers: list[str] = Field(default_factory=list, description="What typically triggers transition to next stage")
+
+
+class EscalationPathway(BaseModel):
+    """
+    Escalation Pathway Modeling - Safe "How"
+    
+    Pattern-based escalation pathway that:
+    - Shows how signals typically progress from structural stress → discourse → behavior → mobilization
+    - Indicates current position within the pathway
+    - Estimates projected progression windows using uncertainty bounds
+    
+    DECISION SUPPORT ONLY: Not predictive of specific actors or events.
+    """
+    pathway_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    pathway_name: str = Field(..., description="Name of the escalation pathway pattern")
+    pathway_description: str = Field(..., description="Description of this pathway type")
+    
+    stages: list[EscalationPathwayStage] = Field(default_factory=list, description="Ordered stages in the pathway")
+    
+    current_stage_index: int = Field(default=0, ge=0, description="Current position in pathway (0-indexed)")
+    stage_entry_time: datetime = Field(default_factory=datetime.utcnow, description="When current stage was entered")
+    
+    progression_probability: float = Field(..., ge=0, le=1, description="Probability of progressing to next stage")
+    regression_probability: float = Field(..., ge=0, le=1, description="Probability of regressing to previous stage")
+    
+    projected_progression_window: tuple[float, float] = Field(
+        default=(24, 168),
+        description="Projected time window for next stage transition (min, max hours) with uncertainty"
+    )
+    projection_confidence: float = Field(default=0.5, ge=0, le=1, description="Confidence in progression projection")
+    
+    historical_pattern_matches: list[str] = Field(default_factory=list, description="Historical patterns this matches")
+    
+    policy_notes: list[str] = Field(
+        default_factory=lambda: [
+            "Pathway modeling is pattern-based, not predictive of specific incidents",
+            "Projections are for decision support only, not forecasting",
+            "No individual actors or specific events are predicted"
+        ],
+        description="Policy compliance notes"
+    )
+
+
+class DrillDownPermission(str, Enum):
+    """Authorization levels for drill-down access"""
+    BASIC = "basic"
+    ANALYST = "analyst"
+    SENIOR_ANALYST = "senior_analyst"
+    SUPERVISOR = "supervisor"
+
+
+class DrillDownRequest(BaseModel):
+    """
+    Authorized Drill-Down Logic - Safe "When"
+    
+    Role-based drill-down controls that:
+    - Allow authorized users to refine region granularity (macro → sub-region)
+    - Allow deeper signal class inspection without exposing raw data or identities
+    - Surface timing sensitivity and acceleration indicators
+    
+    NEVER exposes: personal identifiers, raw content, or enforcement triggers.
+    """
+    threat_id: str = Field(..., description="Threat object to drill down on")
+    user_role: DrillDownPermission = Field(..., description="User's authorization level")
+    
+    requested_region_granularity: Optional[RegionGranularity] = Field(None, description="Requested region detail level")
+    requested_signal_depth: Optional[str] = Field(None, description="Requested signal inspection depth: 'summary', 'detailed', 'full_abstracted'")
+    requested_timing_detail: bool = Field(default=False, description="Request timing sensitivity indicators")
+    
+    rationale: str = Field(..., description="Reason for drill-down request (logged for audit)")
+
+
+class DrillDownResponse(BaseModel):
+    """Response to an authorized drill-down request"""
+    request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    threat_id: str
+    authorized: bool = Field(..., description="Whether the request was authorized")
+    authorization_level: DrillDownPermission
+    
+    region_detail: Optional[RegionContext] = Field(None, description="Refined region context if authorized")
+    
+    signal_detail: Optional[dict] = Field(None, description="Abstracted signal detail if authorized")
+    
+    timing_indicators: Optional[dict] = Field(None, description="Timing sensitivity indicators if authorized")
+    
+    redacted_fields: list[str] = Field(default_factory=list, description="Fields that were redacted due to authorization level")
+    
+    audit_note: str = Field(..., description="Audit trail note for this drill-down")
+    
+    policy_compliance: list[str] = Field(
+        default_factory=lambda: [
+            "No personal identifiers exposed",
+            "No raw content provided",
+            "No enforcement triggers included",
+            "All data remains abstracted and non-attributive"
+        ],
+        description="Policy compliance confirmation"
+    )

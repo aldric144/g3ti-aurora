@@ -318,6 +318,68 @@ class InMemoryStore:
                     date_range="2011"
                 )
             ],
+            region_context={
+                "primary_region": "Midwest Industrial Corridor",
+                "secondary_regions": ["Great Lakes Metro-Adjacent", "Ohio Valley Transition Zone"],
+                "region_type": "multi-state industrial corridor",
+                "attribution_confidence": 0.76,
+                "attribution_rationale": "Signal clustering indicates concentration in manufacturing-dependent areas with recent economic disruption. Attribution based on aggregate economic indicators and public discourse patterns, not individual tracking.",
+                "population_scale": "large metro-adjacent",
+                "economic_profile": "manufacturing-dependent with service transition",
+                "granularity_level": "macro",
+                "policy_notes": [
+                    "Region context is abstracted and non-targeting",
+                    "No precise coordinates or map pins are provided",
+                    "Regional attribution is pattern-based, not surveillance-derived"
+                ]
+            },
+            escalation_pathway={
+                "pathway_id": str(uuid.uuid4()),
+                "pathway_name": "Economic Stress → Social Mobilization Pattern",
+                "pathway_description": "Classic pattern where structural economic stress leads to discourse amplification, behavioral organization, and potential mobilization",
+                "stages": [
+                    {
+                        "stage_name": "Structural Stress Emergence",
+                        "stage_description": "Economic or environmental stressors create conditions for grievance formation",
+                        "typical_indicators": ["Unemployment increase", "Cost of living pressure", "Industry disruption"],
+                        "typical_duration_hours": [168, 720],
+                        "transition_triggers": ["Media coverage", "Community discussion", "Political attention"]
+                    },
+                    {
+                        "stage_name": "Discourse Amplification",
+                        "stage_description": "Grievances become topics of public discussion with increasing intensity",
+                        "typical_indicators": ["Sentiment shift", "Narrative emergence", "Opinion leader engagement"],
+                        "typical_duration_hours": [72, 336],
+                        "transition_triggers": ["Organizing activity", "Event planning", "Coalition formation"]
+                    },
+                    {
+                        "stage_name": "Behavioral Organization",
+                        "stage_description": "Discourse translates into organized activity and preparation",
+                        "typical_indicators": ["Meeting frequency", "Permit applications", "Resource gathering"],
+                        "typical_duration_hours": [48, 168],
+                        "transition_triggers": ["Catalyst event", "Leadership emergence", "External support"]
+                    },
+                    {
+                        "stage_name": "Mobilization Potential",
+                        "stage_description": "Conditions exist for coordinated action if trajectory continues",
+                        "typical_indicators": ["Coordination signals", "Timeline indicators", "Resource readiness"],
+                        "typical_duration_hours": [24, 72],
+                        "transition_triggers": ["Specific catalyst", "Window of opportunity", "Critical mass"]
+                    }
+                ],
+                "current_stage_index": 1,
+                "stage_entry_time": "2025-12-31T00:00:00Z",
+                "progression_probability": 0.42,
+                "regression_probability": 0.28,
+                "projected_progression_window": [72, 240],
+                "projection_confidence": 0.58,
+                "historical_pattern_matches": ["2008 Midwest Economic Protests", "2011 Regional Labor Disputes"],
+                "policy_notes": [
+                    "Pathway modeling is pattern-based, not predictive of specific incidents",
+                    "Projections are for decision support only, not forecasting",
+                    "No individual actors or specific events are predicted"
+                ]
+            },
             status="active"
         )
         

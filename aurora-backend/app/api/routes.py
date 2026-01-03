@@ -35,6 +35,10 @@ from app.models.schemas import (
     MonitoringPosture,
     JurisdictionContext,
     JurisdictionSummary,
+    RegionGranularity,
+    DrillDownPermission,
+    DrillDownRequest,
+    DrillDownResponse,
 )
 from app.database.store import get_store
 from app.modules.signal_ingestion import SignalIngestionEngine
@@ -580,3 +584,162 @@ async def set_current_jurisdiction(request: JurisdictionSetRequest):
         )
     
     return jurisdiction
+
+
+@router.post("/threats/{threat_id}/drilldown", response_model=DrillDownResponse)
+async def drill_down_threat(threat_id: str, request: DrillDownRequest):
+    """
+    Authorized Drill-Down Logic - Safe "When"
+    
+    Role-based drill-down controls that:
+    - Allow authorized users to refine region granularity (macro → sub-region)
+    - Allow deeper signal class inspection without exposing raw data or identities
+    - Surface timing sensitivity and acceleration indicators
+    
+    NEVER exposes: personal identifiers, raw content, or enforcement triggers.
+    
+    Authorization levels:
+    - BASIC: Summary-level access only
+    - ANALYST: Regional detail + signal summaries
+    - SENIOR_ANALYST: Sub-regional + detailed signals + timing
+    - SUPERVISOR: Full abstracted access
+    
+    All drill-down requests are logged for audit trail.
+    """
+    store = get_store()
+    threat = store.get_threat(threat_id)
+    
+    if not threat:
+        raise HTTPException(status_code=404, detail=f"Threat {threat_id} not found")
+    
+    authorization_map = {
+        DrillDownPermission.BASIC: {
+            "max_region_granularity": RegionGranularity.MACRO,
+            "max_signal_depth": "summary",
+            "timing_access": False
+        },
+        DrillDownPermission.ANALYST: {
+            "max_region_granularity": RegionGranularity.REGIONAL,
+            "max_signal_depth": "detailed",
+            "timing_access": False
+        },
+        DrillDownPermission.SENIOR_ANALYST: {
+            "max_region_granularity": RegionGranularity.SUB_REGIONAL,
+            "max_signal_depth": "detailed",
+            "timing_access": True
+        },
+        DrillDownPermission.SUPERVISOR: {
+            "max_region_granularity": RegionGranularity.SUB_REGIONAL,
+            "max_signal_depth": "full_abstracted",
+            "timing_access": True
+        }
+    }
+    
+    auth_level = authorization_map.get(request.user_role, authorization_map[DrillDownPermission.BASIC])
+    redacted_fields = []
+    
+    region_detail = None
+    if request.requested_region_granularity and threat.region_context:
+        granularity_order = [RegionGranularity.MACRO, RegionGranularity.REGIONAL, RegionGranularity.SUB_REGIONAL]
+        requested_idx = granularity_order.index(request.requested_region_granularity)
+        max_idx = granularity_order.index(auth_level["max_region_granularity"])
+        
+        if requested_idx <= max_idx:
+            region_detail = threat.region_context.copy()
+            region_detail["granularity_level"] = request.requested_region_granularity.value
+            
+            if request.requested_region_granularity == RegionGranularity.REGIONAL:
+                region_detail["detail_note"] = "Regional-level detail: Multi-state corridor with adjacent zone context"
+            elif request.requested_region_granularity == RegionGranularity.SUB_REGIONAL:
+                region_detail["detail_note"] = "Sub-regional detail: Metro-adjacent zones with economic profile segmentation"
+        else:
+            redacted_fields.append(f"region_granularity_{request.requested_region_granularity.value}")
+    
+    signal_detail = None
+    if request.requested_signal_depth:
+        depth_order = ["summary", "detailed", "full_abstracted"]
+        requested_idx = depth_order.index(request.requested_signal_depth) if request.requested_signal_depth in depth_order else 0
+        max_idx = depth_order.index(auth_level["max_signal_depth"])
+        
+        if requested_idx <= max_idx:
+            signal_detail = {
+                "depth_level": request.requested_signal_depth,
+                "signal_count": len(threat.signals),
+                "domain_breakdown": threat.probability_curve.domain_coverage,
+                "convergence_score": threat.probability_curve.convergence_score,
+                "signal_classes": []
+            }
+            
+            for signal in threat.signals:
+                signal_info = {
+                    "domain": signal.domain.value if hasattr(signal.domain, 'value') else signal.domain,
+                    "type": signal.signal_type.value if hasattr(signal.signal_type, 'value') else signal.signal_type,
+                    "confidence": signal.raw_confidence,
+                    "weight": signal.weight
+                }
+                
+                if request.requested_signal_depth in ["detailed", "full_abstracted"]:
+                    signal_info["reasoning"] = signal.reasoning
+                    signal_info["source_description"] = signal.source_description
+                
+                signal_detail["signal_classes"].append(signal_info)
+        else:
+            redacted_fields.append(f"signal_depth_{request.requested_signal_depth}")
+    
+    timing_indicators = None
+    if request.requested_timing_detail:
+        if auth_level["timing_access"]:
+            timing_indicators = {
+                "velocity": threat.intent_gradient.velocity,
+                "acceleration": threat.intent_gradient.acceleration,
+                "time_in_current_stage_hours": threat.intent_gradient.time_in_stage,
+                "stage_confidence": threat.intent_gradient.stage_confidence,
+                "trend": threat.probability_curve.trend,
+                "trend_velocity": threat.probability_curve.trend_velocity,
+                "sensitivity_assessment": "elevated" if threat.intent_gradient.velocity > 0.2 else "moderate" if threat.intent_gradient.velocity > 0 else "stable",
+                "acceleration_indicator": "accelerating" if threat.intent_gradient.acceleration > 0 else "decelerating" if threat.intent_gradient.acceleration < 0 else "steady"
+            }
+            
+            if threat.escalation_pathway:
+                timing_indicators["projected_progression_window_hours"] = threat.escalation_pathway.get("projected_progression_window", [72, 240])
+                timing_indicators["projection_confidence"] = threat.escalation_pathway.get("projection_confidence", 0.5)
+        else:
+            redacted_fields.append("timing_indicators")
+    
+    audit_note = f"Drill-down request by {request.user_role.value} for threat {threat_id}. " \
+                 f"Requested: region={request.requested_region_granularity}, " \
+                 f"signal_depth={request.requested_signal_depth}, " \
+                 f"timing={request.requested_timing_detail}. " \
+                 f"Rationale: {request.rationale}"
+    
+    store._log_audit(
+        action_type="drill_down_request",
+        actor=f"user:{request.user_role.value}",
+        target_type="threat",
+        target_id=threat_id,
+        reasoning=audit_note,
+        metadata={
+            "user_role": request.user_role.value,
+            "requested_region_granularity": request.requested_region_granularity.value if request.requested_region_granularity else None,
+            "requested_signal_depth": request.requested_signal_depth,
+            "requested_timing_detail": request.requested_timing_detail,
+            "redacted_fields": redacted_fields
+        }
+    )
+    
+    return DrillDownResponse(
+        threat_id=threat_id,
+        authorized=True,
+        authorization_level=request.user_role,
+        region_detail=region_detail,
+        signal_detail=signal_detail,
+        timing_indicators=timing_indicators,
+        redacted_fields=redacted_fields,
+        audit_note=audit_note,
+        policy_compliance=[
+            "No personal identifiers exposed",
+            "No raw content provided",
+            "No enforcement triggers included",
+            "All data remains abstracted and non-attributive"
+        ]
+    )

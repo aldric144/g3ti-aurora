@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, Shield, Activity, FileText, MessageSquare, Clock, Target, Brain, Eye } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, Shield, Activity, FileText, MessageSquare, Clock, Target, Brain, Eye, MapPin, Route, Lock } from 'lucide-react';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -86,6 +86,41 @@ interface NIO {
   generated_at: string;
 }
 
+interface RegionContext {
+  primary_region: string;
+  secondary_regions: string[];
+  region_type: string;
+  attribution_confidence: number;
+  attribution_rationale: string;
+  population_scale: string;
+  economic_profile: string;
+  granularity_level: string;
+  policy_notes: string[];
+}
+
+interface EscalationPathwayStage {
+  stage_name: string;
+  stage_description: string;
+  typical_indicators: string[];
+  typical_duration_hours: number[];
+  transition_triggers: string[];
+}
+
+interface EscalationPathway {
+  pathway_id: string;
+  pathway_name: string;
+  pathway_description: string;
+  stages: EscalationPathwayStage[];
+  current_stage_index: number;
+  stage_entry_time: string;
+  progression_probability: number;
+  regression_probability: number;
+  projected_progression_window: number[];
+  projection_confidence: number;
+  historical_pattern_matches: string[];
+  policy_notes: string[];
+}
+
 interface ThreatDetail {
   id: string;
   name: string;
@@ -97,6 +132,8 @@ interface ThreatDetail {
   intent_gradient: IntentGradient;
   historical_analogs: HistoricalAnalog[];
   current_nio: NIO | null;
+  region_context: RegionContext | null;
+  escalation_pathway: EscalationPathway | null;
   created_at: string;
   updated_at: string;
 }
@@ -546,6 +583,10 @@ function App() {
                       <FileText className="h-4 w-4 mr-2" />
                       Intelligence Narrative
                     </TabsTrigger>
+                    <TabsTrigger value="situational" className="data-[state=active]:bg-[#121C2D] text-[#C9D4E3]">
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Situational Awareness
+                    </TabsTrigger>
                     <TabsTrigger value="signals" className="data-[state=active]:bg-[#121C2D] text-[#C9D4E3]">
                       <Target className="h-4 w-4 mr-2" />
                       Signal Analysis
@@ -709,6 +750,204 @@ function App() {
                           <Button size="sm" className="ml-4 bg-[#4F81BD] hover:bg-[#4F81BD]/80" onClick={regenerateNIO}>
                             Generate NIO
                           </Button>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="situational" className="space-y-4">
+                    {selectedThreat.region_context && (
+                      <Card className="bg-[#121C2D] border-[#16233A]">
+                        <CardHeader>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-5 w-5 text-[#3EC1C9]" />
+                            <CardTitle className="text-lg text-white">Region-Aware Intelligence</CardTitle>
+                          </div>
+                          <CardDescription className="text-[#9FB0C7]">
+                            Abstracted geographic context — policy-safe, non-targeting
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-1">Primary Region</div>
+                              <div className="text-lg font-semibold text-white">{selectedThreat.region_context.primary_region}</div>
+                              <Badge className="mt-2 bg-[#3EC1C9]/15 text-[#3EC1C9] border border-[#3EC1C9]/30">
+                                {selectedThreat.region_context.region_type}
+                              </Badge>
+                            </div>
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-1">Attribution Confidence</div>
+                              <div className="text-3xl font-bold text-white">{(selectedThreat.region_context.attribution_confidence * 100).toFixed(0)}%</div>
+                              <Progress value={selectedThreat.region_context.attribution_confidence * 100} className="mt-2 h-2" />
+                            </div>
+                          </div>
+                          
+                          {selectedThreat.region_context.secondary_regions.length > 0 && (
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-2">Secondary/Adjacent Regions</div>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedThreat.region_context.secondary_regions.map((region, idx) => (
+                                  <Badge key={idx} variant="outline" className="border-[#3EC1C9]/30 text-[#C9D4E3]">
+                                    {region}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-1">Population Scale</div>
+                              <div className="text-sm text-white capitalize">{selectedThreat.region_context.population_scale.replace(/-/g, ' ')}</div>
+                            </div>
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-1">Economic Profile</div>
+                              <div className="text-sm text-white capitalize">{selectedThreat.region_context.economic_profile.replace(/-/g, ' ')}</div>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-[#16233A] rounded-lg p-4">
+                            <div className="text-xs text-[#9FB0C7] mb-2">Attribution Rationale</div>
+                            <p className="text-sm text-[#D8E2EF] leading-6">{selectedThreat.region_context.attribution_rationale}</p>
+                          </div>
+                          
+                          <Alert className="bg-[#0B1220] border-[#3EC1C9]/30">
+                            <Lock className="h-4 w-4 text-[#3EC1C9]" />
+                            <AlertTitle className="text-[#3EC1C9] text-sm">Policy Compliance</AlertTitle>
+                            <AlertDescription className="text-[#9FB0C7] text-xs">
+                              {selectedThreat.region_context.policy_notes.join(' • ')}
+                            </AlertDescription>
+                          </Alert>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {selectedThreat.escalation_pathway && (
+                      <Card className="bg-[#121C2D] border-[#16233A]">
+                        <CardHeader>
+                          <div className="flex items-center gap-2">
+                            <Route className="h-5 w-5 text-[#F4B400]" />
+                            <CardTitle className="text-lg text-white">Escalation Pathway Modeling</CardTitle>
+                          </div>
+                          <CardDescription className="text-[#9FB0C7]">
+                            Pattern-based progression — decision support only, not forecasting
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="bg-[#16233A] rounded-lg p-4">
+                            <div className="text-xs text-[#9FB0C7] mb-1">Current Pathway Pattern</div>
+                            <div className="text-lg font-semibold text-white">{selectedThreat.escalation_pathway.pathway_name}</div>
+                            <p className="text-sm text-[#C9D4E3] mt-2">{selectedThreat.escalation_pathway.pathway_description}</p>
+                          </div>
+                          
+                          <div className="bg-[#16233A] rounded-lg p-4">
+                            <div className="text-xs text-[#9FB0C7] mb-3">Pathway Stages</div>
+                            <div className="space-y-3">
+                              {selectedThreat.escalation_pathway.stages.map((stage, idx) => {
+                                const isCurrentStage = idx === selectedThreat.escalation_pathway!.current_stage_index;
+                                const isPastStage = idx < selectedThreat.escalation_pathway!.current_stage_index;
+                                const stageColor = idx === 0 ? '#4F81BD' : idx === 1 ? '#F4B400' : idx === 2 ? '#F28C28' : '#E5533D';
+                                return (
+                                  <div key={idx} className={`flex items-start gap-3 p-3 rounded-lg ${isCurrentStage ? 'bg-[#0B1220] border border-[' + stageColor + ']/50' : ''}`}>
+                                    <div className="flex flex-col items-center">
+                                        <div 
+                                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isCurrentStage ? 'ring-2 ring-offset-2 ring-offset-[#16233A]' : ''}`}
+                                          style={{ 
+                                            backgroundColor: isPastStage || isCurrentStage ? stageColor : '#16233A',
+                                            color: isPastStage || isCurrentStage ? '#0B1220' : '#9FB0C7',
+                                            boxShadow: isCurrentStage ? `0 0 0 2px #16233A, 0 0 0 4px ${stageColor}` : undefined
+                                          }}
+                                        >
+                                        {idx + 1}
+                                      </div>
+                                      {idx < selectedThreat.escalation_pathway!.stages.length - 1 && (
+                                        <div className={`w-0.5 h-8 mt-1 ${isPastStage ? 'bg-[#3EC1C9]' : 'bg-[#16233A]'}`} />
+                                      )}
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className={`font-medium ${isCurrentStage ? 'text-white' : 'text-[#C9D4E3]'}`}>{stage.stage_name}</span>
+                                        {isCurrentStage && (
+                                          <Badge className="bg-[#F4B400]/15 text-[#F4B400] border border-[#F4B400]/30 text-xs">
+                                            Current Position
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-[#9FB0C7] mt-1">{stage.stage_description}</p>
+                                      {isCurrentStage && (
+                                        <div className="mt-2 text-xs text-[#9FB0C7]">
+                                          Typical duration: {stage.typical_duration_hours[0]}–{stage.typical_duration_hours[1]} hours
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-1">Progression Probability</div>
+                              <div className="text-2xl font-bold text-[#F28C28]">{(selectedThreat.escalation_pathway.progression_probability * 100).toFixed(0)}%</div>
+                              <div className="text-xs text-[#9FB0C7] mt-1">to next stage</div>
+                            </div>
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-1">Regression Probability</div>
+                              <div className="text-2xl font-bold text-[#4F81BD]">{(selectedThreat.escalation_pathway.regression_probability * 100).toFixed(0)}%</div>
+                              <div className="text-xs text-[#9FB0C7] mt-1">to previous stage</div>
+                            </div>
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-1">Projection Confidence</div>
+                              <div className="text-2xl font-bold text-white">{(selectedThreat.escalation_pathway.projection_confidence * 100).toFixed(0)}%</div>
+                              <Progress value={selectedThreat.escalation_pathway.projection_confidence * 100} className="mt-2 h-2" />
+                            </div>
+                          </div>
+                          
+                          <div className="bg-[#16233A] rounded-lg p-4">
+                            <div className="text-xs text-[#9FB0C7] mb-2">Projected Progression Window (with uncertainty)</div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-[#F4B400]" />
+                              <span className="text-white font-medium">
+                                {selectedThreat.escalation_pathway.projected_progression_window[0]}–{selectedThreat.escalation_pathway.projected_progression_window[1]} hours
+                              </span>
+                              <span className="text-[#9FB0C7] text-sm">
+                                ({(selectedThreat.escalation_pathway.projected_progression_window[0] / 24).toFixed(1)}–{(selectedThreat.escalation_pathway.projected_progression_window[1] / 24).toFixed(1)} days)
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {selectedThreat.escalation_pathway.historical_pattern_matches.length > 0 && (
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-2">Historical Pattern Matches</div>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedThreat.escalation_pathway.historical_pattern_matches.map((pattern, idx) => (
+                                  <Badge key={idx} variant="outline" className="border-[#F4B400]/30 text-[#C9D4E3]">
+                                    {pattern}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          <Alert className="bg-[#0B1220] border-[#F4B400]/30">
+                            <Shield className="h-4 w-4 text-[#F4B400]" />
+                            <AlertTitle className="text-[#F4B400] text-sm">Decision Support Notice</AlertTitle>
+                            <AlertDescription className="text-[#9FB0C7] text-xs">
+                              {selectedThreat.escalation_pathway.policy_notes.join(' • ')}
+                            </AlertDescription>
+                          </Alert>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {!selectedThreat.region_context && !selectedThreat.escalation_pathway && (
+                      <Alert className="bg-[#16233A] border-[#16233A]">
+                        <AlertTriangle className="h-4 w-4 text-[#F4B400]" />
+                        <AlertTitle className="text-white">Situational Awareness Data Unavailable</AlertTitle>
+                        <AlertDescription className="text-[#C9D4E3]">
+                          Region context and escalation pathway data have not been generated for this threat.
                         </AlertDescription>
                       </Alert>
                     )}
