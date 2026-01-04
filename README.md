@@ -107,6 +107,51 @@ aurora/
 - Master disclaimer and policy compliance badges
 - Full audit trail for all recommendations
 
+### Phase 3.x: Decision Discipline & Trust Hardening
+
+#### 1. Decision Confidence Gate
+- Gating mechanism (NOT a numeric score) that controls what the system is allowed to recommend
+- Inputs: Signal diversity, persistence over time, cross-domain convergence, data confidence
+- Gate states: OPEN (full recommendations), LIMITED (restricted outputs), CLOSED (monitoring only)
+- When confidence is below threshold: Limits outputs to monitoring or informational posture
+- All gating decisions logged in the audit trail
+
+#### 2. Decision Readiness Levels (DRL)
+- Advisory framing layer (NOT threat levels)
+- DRL-0: Informational Awareness - Pattern detected but not yet decision-relevant
+- DRL-1: Monitor & Observe - Pattern warrants continued attention
+- DRL-2: Consider Engagement - Pattern suggests potential for escalation
+- DRL-3: Prepare Cross-Functional Response - Pattern indicates elevated decision relevance
+- One DRL active per context at a time
+- No enforcement language
+
+#### 3. Context Aging & Decay Language
+- Explicit aging and decay indicators for contexts
+- States: STABLE, COOLING, DECAYING, STALE
+- Contexts must not feel permanent
+- No sudden removals without explanation
+- All aging events logged for auditability
+
+#### 4. "Why This Is Shown" Explainability Panel
+- Expandable element on Decision Pathways, Impact Forecasting, Authority-Aware Recommendations
+- Explains what factors caused the panel to appear
+- Shows what factors did NOT trigger it
+- States what the system is explicitly NOT claiming
+- Supports audits and demos
+
+#### 5. Visual & UX Restraint Rules
+- Urgency conveyed through consistency and persistence, not animation
+- No blinking, pulsing, or alarm-style UI
+- No red/yellow/green threat status framing
+- No global "top threats" or "alert counts"
+- The loudest visual element must never be the most urgent element
+
+#### 6. Silent Audit Mode (Foundational Hook)
+- Backend support for future review of historical system state
+- Enables post-hoc decision review
+- Supports training and governance use
+- No live UI exposure yet
+
 ### Phase 4: Multi-Context Regional Intelligence
 
 #### 1. Context Stack Model
@@ -248,7 +293,16 @@ VITE_API_URL=http://localhost:8000
 
 ## Version History
 
-- **v1.2-multi-context-regional-intelligence** (Current): Complete Phase 1 + Phase 2 + Phase 3 + Phase 4 implementation
+- **v1.3-decision-discipline** (Current): Complete Phase 1 + Phase 2 + Phase 3 + Phase 3.x + Phase 4 implementation
+  - All v1.2 features plus:
+  - Decision Confidence Gate (gating mechanism for recommendations)
+  - Decision Readiness Levels (DRL-0 to DRL-3)
+  - Context Aging & Decay Language
+  - "Why This Is Shown" Explainability Panels
+  - Silent Audit Mode foundational hook (backend only)
+  - Visual & UX Restraint Rules enforcement
+
+- **v1.2-multi-context-regional-intelligence**: Complete Phase 1 + Phase 2 + Phase 3 + Phase 4 implementation
   - All v1.1 features plus:
   - Multi-Context Per Region (Context Stack Model with 3-5 optimal, max 8 contexts)
   - Context Prioritization based on intent stage, persistence, decision impact, confidence
