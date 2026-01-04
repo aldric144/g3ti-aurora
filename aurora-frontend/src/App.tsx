@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
@@ -1850,7 +1851,25 @@ function App() {
                             <>
                               {activeRegion.confidence_bands && (
                                 <div className="bg-[#16233A] rounded-lg p-4">
-                                  <div className="text-xs text-[#9FB0C7] mb-3">Layered Region Confidence Bands</div>
+                                  <div className="text-xs text-[#9FB0C7] mb-3 flex items-center gap-2">
+                                    Layered Region Confidence Bands
+                                    <TooltipProvider>
+                                      <UITooltip>
+                                        <TooltipTrigger asChild>
+                                          <Info className="w-3.5 h-3.5 text-[#9FB0C7] hover:text-[#C9D4E3] cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" className="max-w-xs bg-[#121C2D] border border-[#16233A] text-[#C9D4E3] p-3">
+                                          <p className="font-medium text-white mb-2">Regional Relevance Zones</p>
+                                          <p className="text-xs leading-relaxed">
+                                            These labels describe analytical relevance zones for the selected region. 
+                                            They indicate where contextual conditions are most relevant based on converging indicators. 
+                                            They do not represent event locations, actor activity, or precise geographic targeting, and they are not interactive. 
+                                            The map provides spatial context only to support decision understanding.
+                                          </p>
+                                        </TooltipContent>
+                                      </UITooltip>
+                                    </TooltipProvider>
+                                  </div>
                                   <div className="space-y-3">
                                     <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0B1220] border-2 border-solid border-[#3EC1C9]">
                                       <div className="w-3 h-3 rounded-full bg-[#3EC1C9]" />
