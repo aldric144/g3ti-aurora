@@ -72,6 +72,41 @@ aurora/
 - Timing sensitivity and acceleration indicators
 - Full audit logging
 
+#### 4. Probabilistic Threat Class Alignment
+- 8 analytic threat class categories (non-exclusive, non-criminal)
+- Probabilistic weighting based on signals, intent stage, escalation pathway
+- Intent-aware evolution with gradual transitions
+- Full explainability with rationale for each alignment
+
+### Phase 3: Decision Advantage & Authority-Aware Guidance
+
+#### 1. Decision Pathway Intelligence
+- 8 advisory pathway categories (economic engagement, community outreach, communications, etc.)
+- Relevance ranking (High / Moderate / Low) with confidence scores
+- Proportionality notes and suggested considerations
+- Explicitly avoids enforcement or tactical instruction
+- All guidance is optional, advisory, and proportional
+
+#### 2. Impact Forecasting (System-Level)
+- 6 impact domains (institutional trust, community stability, operational continuity, etc.)
+- System-level impact projections with time horizons
+- Confidence bands and severity scoring
+- Focuses on institutional and community outcomes
+- Does not predict specific events or actors
+
+#### 3. Authority-Aware Recommendations
+- 10 leadership domains (executive leadership, operations management, communications, etc.)
+- Identifies which domains are best positioned to respond
+- Context applicability (government, enterprise, multi-agency)
+- No naming of individuals, units, or enforcement targets
+- Supports cross-domain coordination
+
+#### 4. Decision Advantage Summary
+- Overall decision posture assessment
+- Confidence-weighted priority scoring
+- Master disclaimer and policy compliance badges
+- Full audit trail for all recommendations
+
 ## Patent-Critical Features
 
 ### Weak-Signal Convergence Engine
@@ -174,13 +209,28 @@ VITE_API_URL=http://localhost:8000
 
 ## Version History
 
+- **v1.1-decision-advantage** (Current): Complete Phase 1 + Phase 2 + Phase 3 implementation
+  - All v1.0 features plus:
+  - Decision Pathway Intelligence (8 advisory pathways)
+  - Impact Forecasting (6 system-level impact domains)
+  - Authority-Aware Recommendations (10 leadership domains)
+  - Decision Advantage Summary with confidence-weighted priority
+  - Probabilistic Threat Class Alignment (8 analytic categories)
+
 - **v1.0-stable**: Complete Phase 1 + Phase 2 implementation
   - Context-Aware Color Intelligence
   - Region-Aware Intelligence
   - Escalation Pathway Modeling
   - Authorized Drill-Down Logic
+  - Probabilistic Threat Class Alignment
   - Jurisdiction Context (90 countries)
   - Full audit trail and access logging
+
+- **v1.0-stable-context-aware**: Phase 1 baseline
+  - Context-Aware Color Intelligence
+  - Intent Stage color mapping
+  - Probability intensity scaling
+  - WCAG AA compliance
 
 ## License
 
