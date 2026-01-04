@@ -64,7 +64,11 @@ from app.modules.signal_ingestion import SignalIngestionEngine
 from app.modules.correlation import ConvergenceEngine
 from app.modules.intent_modeling import IntentGradientEngine
 from app.modules.narrative_generation import NarrativeEngine
-from app.modules.live_data_governance import LiveDataGovernanceEngine
+from app.modules.live_data_governance import (
+    LiveDataGovernanceEngine,
+    live_data_governance_engine,
+    live_data_source_handler
+)
 
 
 router = APIRouter()
@@ -1457,3 +1461,320 @@ async def get_governance_audit_log(limit: int = Query(default=100, le=1000)):
     - Fail-safe activations
     """
     return live_data_governance_engine.get_audit_log(limit)
+
+
+class EnableLiveDataRequest(BaseModel):
+    enabled_by: str = "system"
+
+
+class IngestStructuralEconomicRequest(BaseModel):
+    indicator_type: str
+    value: float
+    region: str
+    metadata: Optional[dict] = None
+
+
+class IngestDiscourseRequest(BaseModel):
+    topic: str
+    frequency_delta: float
+    sentiment_delta: float
+    metadata: Optional[dict] = None
+
+
+class IngestInstitutionalRequest(BaseModel):
+    indicator_type: str
+    institution: str
+    posture_change: str
+    metadata: Optional[dict] = None
+
+
+@router.get("/live-data/status")
+async def get_live_data_status():
+    """
+    Get current live data source status.
+    
+    SCOPE & CONSTRAINTS (NON-NEGOTIABLE):
+    - Live Data Mode: ON_US_ONLY
+    - No alerts
+    - No event detection
+    - No actor or individual modeling
+    - No public-facing feeds
+    """
+    return live_data_source_handler.get_status()
+
+
+@router.post("/live-data/enable")
+async def enable_live_data(request: EnableLiveDataRequest):
+    """
+    Enable internal live U.S. data ingestion.
+    
+    ENABLED INPUT SOURCES (LIMITED SET):
+    A. Structural / Economic Indicators - Macro-level only
+    B. Abstracted Public Discourse Trends - Topic-level only
+    C. Institutional / Policy Indicators - Metadata only
+    
+    All inputs must pass existing ingestion validation and governance checks.
+    """
+    live_data_governance_engine.set_live_data_mode(
+        LiveDataMode.ON_US_ONLY,
+        set_by=request.enabled_by
+    )
+    
+    result = live_data_source_handler.enable_live_data(request.enabled_by)
+    
+    live_data_governance_engine._log_audit_entry(
+        entry_type="live_data_enabled",
+        metadata={
+            "enabled_by": request.enabled_by,
+            "mode": "ON_US_ONLY",
+            "sources": result["sources_enabled"]
+        }
+    )
+    
+    return {
+        "governance_mode": "ON_US_ONLY",
+        "live_data_status": result,
+        "message": "Live U.S. data ingestion enabled under governance framework"
+    }
+
+
+@router.post("/live-data/disable")
+async def disable_live_data(request: EnableLiveDataRequest):
+    """
+    Disable live data ingestion.
+    """
+    live_data_governance_engine.set_live_data_mode(
+        LiveDataMode.OFF,
+        set_by=request.enabled_by
+    )
+    
+    result = live_data_source_handler.disable_live_data(request.enabled_by)
+    
+    live_data_governance_engine._log_audit_entry(
+        entry_type="live_data_disabled",
+        metadata={
+            "disabled_by": request.enabled_by,
+            "processed_count": result["processed_count"],
+            "rejected_count": result["rejected_count"]
+        }
+    )
+    
+    return {
+        "governance_mode": "OFF",
+        "live_data_status": result,
+        "message": "Live data ingestion disabled"
+    }
+
+
+@router.post("/live-data/ingest/structural-economic")
+async def ingest_structural_economic(request: IngestStructuralEconomicRequest):
+    """
+    Ingest structural/economic indicator.
+    
+    CONSTRAINTS:
+    - Macro-level only
+    - No sub-regional precision below defined regions
+    
+    ALLOWED INDICATORS:
+    - unemployment_rate, gdp_growth, inflation_rate, housing_starts
+    - manufacturing_index, consumer_confidence, wage_growth
+    - labor_force_participation, trade_balance, industrial_production
+    """
+    if not live_data_source_handler.enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="Live data ingestion is not enabled. Call POST /live-data/enable first."
+        )
+    
+    validation = live_data_governance_engine.validate_input(
+        content=f"Economic indicator: {request.indicator_type} at {request.value} for region {request.region}",
+        jurisdiction="US",
+        metadata={"category": "economic", **(request.metadata or {})}
+    )
+    
+    if not validation.is_valid:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Input rejected by governance",
+                "reason": validation.rejection_reason.value if validation.rejection_reason else "unknown",
+                "details": validation.rejection_details,
+                "audit_ref": validation.audit_reference
+            }
+        )
+    
+    result = live_data_source_handler.ingest_structural_economic(
+        indicator_type=request.indicator_type,
+        value=request.value,
+        region=request.region,
+        metadata=request.metadata
+    )
+    
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="Indicator type not allowed or ingestion failed"
+        )
+    
+    result.governance_validated = True
+    result.governance_audit_ref = validation.audit_reference
+    
+    return {
+        "status": "ingested",
+        "input": result.to_dict(),
+        "governance": {
+            "validated": True,
+            "category": validation.input_category.value if validation.input_category else None,
+            "audit_ref": validation.audit_reference
+        }
+    }
+
+
+@router.post("/live-data/ingest/discourse")
+async def ingest_discourse_trend(request: IngestDiscourseRequest):
+    """
+    Ingest abstracted discourse trend.
+    
+    CONSTRAINTS:
+    - Topic-level frequency and sentiment deltas only
+    - No raw text, accounts, platforms, or identifiers
+    - Time resolution no finer than hourly
+    """
+    if not live_data_source_handler.enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="Live data ingestion is not enabled. Call POST /live-data/enable first."
+        )
+    
+    validation = live_data_governance_engine.validate_input(
+        content=f"Discourse trend: topic '{request.topic}' frequency delta {request.frequency_delta:+.2f}%, sentiment delta {request.sentiment_delta:+.2f}",
+        jurisdiction="US",
+        metadata={"category": "discourse", **(request.metadata or {})}
+    )
+    
+    if not validation.is_valid:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Input rejected by governance",
+                "reason": validation.rejection_reason.value if validation.rejection_reason else "unknown",
+                "details": validation.rejection_details,
+                "audit_ref": validation.audit_reference
+            }
+        )
+    
+    result = live_data_source_handler.ingest_discourse_trend(
+        topic=request.topic,
+        frequency_delta=request.frequency_delta,
+        sentiment_delta=request.sentiment_delta,
+        metadata=request.metadata
+    )
+    
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="Discourse ingestion failed"
+        )
+    
+    result.governance_validated = True
+    result.governance_audit_ref = validation.audit_reference
+    
+    return {
+        "status": "ingested",
+        "input": result.to_dict(),
+        "governance": {
+            "validated": True,
+            "category": validation.input_category.value if validation.input_category else None,
+            "audit_ref": validation.audit_reference
+        }
+    }
+
+
+@router.post("/live-data/ingest/institutional")
+async def ingest_institutional_indicator(request: IngestInstitutionalRequest):
+    """
+    Ingest institutional/policy indicator.
+    
+    CONSTRAINTS:
+    - Public policy, regulatory, or institutional posture changes
+    - Metadata only (no document storage)
+    
+    ALLOWED INDICATORS:
+    - policy_announcement, regulatory_change, legislative_status
+    - agency_posture, compliance_update, institutional_statement
+    """
+    if not live_data_source_handler.enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="Live data ingestion is not enabled. Call POST /live-data/enable first."
+        )
+    
+    validation = live_data_governance_engine.validate_input(
+        content=f"Institutional indicator: {request.indicator_type} from {request.institution} - {request.posture_change}",
+        jurisdiction="US",
+        metadata={"category": "institutional", **(request.metadata or {})}
+    )
+    
+    if not validation.is_valid:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Input rejected by governance",
+                "reason": validation.rejection_reason.value if validation.rejection_reason else "unknown",
+                "details": validation.rejection_details,
+                "audit_ref": validation.audit_reference
+            }
+        )
+    
+    result = live_data_source_handler.ingest_institutional_indicator(
+        indicator_type=request.indicator_type,
+        institution=request.institution,
+        posture_change=request.posture_change,
+        metadata=request.metadata
+    )
+    
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="Indicator type not allowed or ingestion failed"
+        )
+    
+    result.governance_validated = True
+    result.governance_audit_ref = validation.audit_reference
+    
+    return {
+        "status": "ingested",
+        "input": result.to_dict(),
+        "governance": {
+            "validated": True,
+            "category": validation.input_category.value if validation.input_category else None,
+            "audit_ref": validation.audit_reference
+        }
+    }
+
+
+@router.get("/live-data/inputs")
+async def get_recent_live_inputs(limit: int = Query(default=50, le=200)):
+    """
+    Get recent live data inputs.
+    
+    Returns inputs that have passed governance validation.
+    """
+    return {
+        "inputs": live_data_source_handler.get_recent_inputs(limit),
+        "total": len(live_data_source_handler.input_buffer),
+        "governance_mode": live_data_governance_engine.governance_mode.mode.value
+    }
+
+
+@router.get("/live-data/freshness")
+async def get_live_data_freshness():
+    """
+    Get data freshness summary for all live data sources.
+    
+    DATA FRESHNESS BANDS:
+    - Fresh: Updated < 6 hours ago
+    - Recent: Updated 6-24 hours ago
+    - Aging: Updated > 24 hours ago
+    """
+    return live_data_source_handler.get_freshness_summary()

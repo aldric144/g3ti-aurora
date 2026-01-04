@@ -16,6 +16,21 @@ GLOBAL SAFETY RULES (NON-NEGOTIABLE):
 - U.S. context only (global synthetic remains unchanged)
 """
 
-from .engine import LiveDataGovernanceEngine
+from .engine import LiveDataGovernanceEngine, live_data_governance_engine
+from .sources import (
+    LiveDataSourceHandler,
+    LiveDataSourceType,
+    LiveDataSourceConfig,
+    LiveDataInput,
+    live_data_source_handler
+)
 
-__all__ = ["LiveDataGovernanceEngine"]
+__all__ = [
+    "LiveDataGovernanceEngine",
+    "live_data_governance_engine",
+    "LiveDataSourceHandler",
+    "LiveDataSourceType",
+    "LiveDataSourceConfig",
+    "LiveDataInput",
+    "live_data_source_handler"
+]

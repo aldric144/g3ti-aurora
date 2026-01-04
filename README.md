@@ -247,6 +247,59 @@ Prepares AURORA for internal live U.S. data ingestion while maintaining strict p
 - No public-facing live feeds
 - U.S. context only (global synthetic remains unchanged)
 
+### Phase 1.4.1: Live U.S. Data Enabled (Controlled Pilot)
+
+Enables internal live U.S. data ingestion under the existing Live Data Governance framework.
+
+#### Scope & Constraints (Non-Negotiable)
+- Live Data Mode: ON_US_ONLY
+- No alerts
+- No event detection
+- No actor or individual modeling
+- No public-facing feeds
+- No UI language changes implying monitoring or real-time surveillance
+
+#### Enabled Input Sources (Limited Set)
+
+**A. Structural / Economic Indicators**
+- Macro-level only
+- No sub-regional precision below defined regions
+- Allowed indicators: unemployment_rate, gdp_growth, inflation_rate, housing_starts, manufacturing_index, consumer_confidence, wage_growth, labor_force_participation, trade_balance, industrial_production
+
+**B. Abstracted Public Discourse Trends**
+- Topic-level frequency and sentiment deltas only
+- No raw text, accounts, platforms, or identifiers
+- Time resolution no finer than hourly
+
+**C. Institutional / Policy Indicators**
+- Public policy, regulatory, or institutional posture changes
+- Metadata only (no document storage)
+- Allowed indicators: policy_announcement, regulatory_change, legislative_status, agency_posture, compliance_update, institutional_statement
+
+#### Governance Enforcement
+All live inputs:
+- Are classified by domain at ingestion
+- Are subject to domain balance enforcement, velocity dampening, escalation ceilings, confidence collapse handling
+- Cannot bypass convergence or Decision Confidence Gate
+- Log all governance decisions
+
+#### API Endpoints for Live Data
+- `GET /api/v1/live-data/status` - Get current live data source status
+- `POST /api/v1/live-data/enable` - Enable live U.S. data ingestion
+- `POST /api/v1/live-data/disable` - Disable live data ingestion
+- `POST /api/v1/live-data/ingest/structural-economic` - Ingest structural/economic indicator
+- `POST /api/v1/live-data/ingest/discourse` - Ingest abstracted discourse trend
+- `POST /api/v1/live-data/ingest/institutional` - Ingest institutional/policy indicator
+- `GET /api/v1/live-data/inputs` - Get recent live data inputs
+- `GET /api/v1/live-data/freshness` - Get data freshness summary
+
+#### Labeling & Transparency
+- Data freshness labels visible where context is summarized
+- Provenance labels appear in "Why This Is Shown" panels
+- No UI elements imply urgency or alerting
+
+This phase is observational only. No tuning or feature expansion.
+
 ## Patent-Critical Features
 
 ### Weak-Signal Convergence Engine
@@ -349,7 +402,16 @@ VITE_API_URL=http://localhost:8000
 
 ## Version History
 
-- **v1.4-live-data-governance** (Current): Complete Phase 1 + Phase 2 + Phase 3 + Phase 3.x + Phase 4 + Phase 1.4 implementation
+- **v1.4.1-live-us-data-enabled** (Current): Complete Phase 1 + Phase 2 + Phase 3 + Phase 3.x + Phase 4 + Phase 1.4 + Phase 1.4.1 implementation
+  - All v1.4 features plus:
+  - Live Data Mode enabled (ON_US_ONLY)
+  - Live input sources for three allowed classes (Structural/Economic, Abstracted Discourse, Institutional/Policy)
+  - API endpoints for live data ingestion with governance validation
+  - All inputs pass through governance enforcement at ingestion
+  - Data freshness and provenance labels visible in UI
+  - Observational only - no tuning or feature expansion
+
+- **v1.4-live-data-governance**: Complete Phase 1 + Phase 2 + Phase 3 + Phase 3.x + Phase 4 + Phase 1.4 implementation
   - All v1.3 features plus:
   - Live Data Governance Mode (policy enforcement at ingestion)
   - Data Freshness & Time Semantics (freshness bands, persistence states)
