@@ -1330,3 +1330,375 @@ class RegionSummary(BaseModel):
     highest_intent_stage: Optional[str] = None
     overall_confidence: float = Field(default=0.0, ge=0, le=1)
     is_active: bool = Field(default=False)
+
+
+class DecisionReadinessLevel(str, Enum):
+    """
+    Decision Readiness Levels (DRL) - Advisory framing layer.
+    
+    These are NOT threat levels. They represent decision readiness posture.
+    One DRL active per context at a time.
+    
+    CONSTRAINTS:
+    - Advisory only, no enforcement language
+    - Integrates with Decision Pathway Intelligence
+    - No surveillance or investigative framing
+    """
+    DRL_0 = "drl_0"
+    DRL_1 = "drl_1"
+    DRL_2 = "drl_2"
+    DRL_3 = "drl_3"
+
+
+DRL_DESCRIPTIONS = {
+    DecisionReadinessLevel.DRL_0: {
+        "name": "Informational Awareness",
+        "description": "Pattern detected but not yet decision-relevant. Maintain awareness.",
+        "posture": "Observe and document",
+        "action_guidance": "No action required. Continue routine monitoring."
+    },
+    DecisionReadinessLevel.DRL_1: {
+        "name": "Monitor & Observe",
+        "description": "Pattern warrants attention. Increased monitoring recommended.",
+        "posture": "Active monitoring",
+        "action_guidance": "Increase monitoring frequency. Document pattern evolution."
+    },
+    DecisionReadinessLevel.DRL_2: {
+        "name": "Consider Engagement",
+        "description": "Pattern suggests potential for escalation. Consider proactive engagement.",
+        "posture": "Engagement consideration",
+        "action_guidance": "Review decision pathways. Consider stakeholder engagement."
+    },
+    DecisionReadinessLevel.DRL_3: {
+        "name": "Prepare Cross-Functional Response",
+        "description": "Pattern indicates elevated decision relevance. Cross-functional coordination recommended.",
+        "posture": "Coordinated preparation",
+        "action_guidance": "Activate cross-functional coordination. Prepare response options."
+    }
+}
+
+
+class DecisionConfidenceGateStatus(str, Enum):
+    """Status of the Decision Confidence Gate"""
+    OPEN = "open"
+    LIMITED = "limited"
+    CLOSED = "closed"
+
+
+class DecisionConfidenceGate(BaseModel):
+    """
+    Decision Confidence Gate - Controls what the system is allowed to recommend.
+    
+    This is NOT a numeric score. This is a GATING MECHANISM evaluated before:
+    - Decision Pathways
+    - Authority-Aware Recommendations
+    
+    BEHAVIOR:
+    - If confidence is below threshold: Limit outputs to monitoring/informational posture
+    - Display appropriate limiting language
+    - Log all gating decisions in audit trail
+    
+    INPUTS:
+    - Signal diversity
+    - Persistence over time
+    - Cross-domain convergence
+    - Data confidence
+    """
+    gate_status: DecisionConfidenceGateStatus = Field(
+        ..., description="Current gate status: open, limited, or closed"
+    )
+    
+    signal_diversity_score: float = Field(
+        ..., ge=0, le=1, description="Diversity of signal sources (0-1)"
+    )
+    persistence_score: float = Field(
+        ..., ge=0, le=1, description="Persistence of pattern over time (0-1)"
+    )
+    cross_domain_convergence: float = Field(
+        ..., ge=0, le=1, description="Convergence across domains (0-1)"
+    )
+    data_confidence: float = Field(
+        ..., ge=0, le=1, description="Overall data confidence (0-1)"
+    )
+    
+    composite_confidence: float = Field(
+        ..., ge=0, le=1, description="Composite confidence score (0-1)"
+    )
+    
+    threshold_met: bool = Field(
+        ..., description="Whether confidence threshold is met for full recommendations"
+    )
+    
+    limiting_message: Optional[str] = Field(
+        None, description="Message displayed when gate limits outputs"
+    )
+    
+    allowed_outputs: list[str] = Field(
+        default_factory=list, description="List of outputs allowed through the gate"
+    )
+    
+    restricted_outputs: list[str] = Field(
+        default_factory=list, description="List of outputs restricted by the gate"
+    )
+    
+    gate_rationale: str = Field(
+        ..., description="Explanation of why the gate is in its current state"
+    )
+    
+    evaluated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    audit_logged: bool = Field(
+        default=True, description="Whether this gating decision was logged to audit trail"
+    )
+
+
+class ExplainabilityFactor(BaseModel):
+    """Individual factor contributing to a panel being shown"""
+    factor_name: str = Field(..., description="Name of the contributing factor")
+    factor_description: str = Field(..., description="Plain-language description")
+    contributed: bool = Field(..., description="Whether this factor contributed to showing the panel")
+    weight: float = Field(default=0.0, ge=0, le=1, description="Weight of this factor")
+
+
+class ExplainabilityPanel(BaseModel):
+    """
+    'Why This Is Shown' Explainability Panel
+    
+    Available on:
+    - Decision Pathway panels
+    - Impact Forecasting
+    - Authority-Aware Recommendations
+    - Regional Context summaries
+    
+    Content explains:
+    - What factors caused the panel to appear
+    - What factors did NOT trigger it
+    - What the system is explicitly NOT claiming
+    
+    REQUIREMENTS:
+    - Concise
+    - Plain-language
+    - Supports audits and demos
+    """
+    panel_type: str = Field(..., description="Type of panel this explains")
+    panel_title: str = Field(..., description="Title of the panel being explained")
+    
+    triggering_factors: list[ExplainabilityFactor] = Field(
+        default_factory=list, description="Factors that caused this panel to appear"
+    )
+    
+    non_triggering_factors: list[ExplainabilityFactor] = Field(
+        default_factory=list, description="Factors that did NOT trigger this panel"
+    )
+    
+    explicit_non_claims: list[str] = Field(
+        default_factory=list, description="What the system is explicitly NOT claiming"
+    )
+    
+    summary: str = Field(
+        ..., description="Concise plain-language summary of why this is shown"
+    )
+    
+    confidence_note: str = Field(
+        default="", description="Note about confidence level of this display"
+    )
+    
+    audit_reference: Optional[str] = Field(
+        None, description="Reference ID for audit trail"
+    )
+
+
+class ContextAgingStatus(str, Enum):
+    """Status of context aging/decay"""
+    STABLE = "stable"
+    COOLING = "cooling"
+    DECAYING = "decaying"
+    STALE = "stale"
+
+
+class ContextAging(BaseModel):
+    """
+    Context Aging & Decay Indicators
+    
+    Contexts must not feel permanent. This model tracks:
+    - Relevance decay over time
+    - Signal persistence changes
+    - Velocity trend changes
+    
+    RULES:
+    - No sudden removals without explanation
+    - All aging events logged for auditability
+    - Clear language about context status
+    """
+    context_id: str = Field(..., description="Associated context ID")
+    
+    aging_status: ContextAgingStatus = Field(
+        ..., description="Current aging status"
+    )
+    
+    relevance_trend: str = Field(
+        ..., description="Direction of relevance change: increasing, stable, decreasing"
+    )
+    
+    signal_persistence_change: float = Field(
+        default=0.0, ge=-1, le=1, description="Change in signal persistence (-1 to 1)"
+    )
+    
+    velocity_trend: str = Field(
+        default="stable", description="Velocity trend: accelerating, stable, decelerating"
+    )
+    
+    aging_message: str = Field(
+        ..., description="Human-readable aging status message"
+    )
+    
+    days_since_last_signal: int = Field(
+        default=0, ge=0, description="Days since last contributing signal"
+    )
+    
+    decay_rate: float = Field(
+        default=0.0, ge=0, le=1, description="Rate of relevance decay (0-1)"
+    )
+    
+    removal_warning: bool = Field(
+        default=False, description="Whether context is approaching removal threshold"
+    )
+    
+    removal_explanation: Optional[str] = Field(
+        None, description="Explanation if context is being removed"
+    )
+    
+    last_evaluated: datetime = Field(default_factory=datetime.utcnow)
+    
+    audit_logged: bool = Field(
+        default=True, description="Whether aging event was logged to audit trail"
+    )
+
+
+class SilentAuditEntry(BaseModel):
+    """
+    Silent Audit Mode - Foundational Hook
+    
+    Enables future capabilities for:
+    - Review of historical system state
+    - Post-hoc decision review
+    - Training and governance use
+    
+    NOTE: This is a foundational data structure only.
+    No live UI exposure is required yet.
+    """
+    entry_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    
+    entry_type: str = Field(
+        ..., description="Type of audit entry: state_snapshot, decision_gate, context_aging, drl_change, etc."
+    )
+    
+    context_id: Optional[str] = Field(None, description="Associated context ID if applicable")
+    threat_id: Optional[str] = Field(None, description="Associated threat ID if applicable")
+    region_id: Optional[str] = Field(None, description="Associated region ID if applicable")
+    
+    system_state_snapshot: Optional[dict] = Field(
+        None, description="Snapshot of relevant system state at this moment"
+    )
+    
+    decision_inputs: Optional[dict] = Field(
+        None, description="Inputs that led to any decision at this moment"
+    )
+    
+    decision_outputs: Optional[dict] = Field(
+        None, description="Outputs/recommendations made at this moment"
+    )
+    
+    gate_status: Optional[str] = Field(
+        None, description="Decision Confidence Gate status at this moment"
+    )
+    
+    drl_level: Optional[str] = Field(
+        None, description="Decision Readiness Level at this moment"
+    )
+    
+    aging_status: Optional[str] = Field(
+        None, description="Context aging status at this moment"
+    )
+    
+    metadata: dict = Field(
+        default_factory=dict, description="Additional metadata for audit purposes"
+    )
+    
+    is_reviewable: bool = Field(
+        default=True, description="Whether this entry can be reviewed in audit mode"
+    )
+    
+    governance_tags: list[str] = Field(
+        default_factory=list, description="Tags for governance categorization"
+    )
+
+
+class DecisionDisciplineLayer(BaseModel):
+    """
+    Decision Discipline & Trust Hardening Layer - Phase 3.x
+    
+    Combines all decision discipline safeguards:
+    - Decision Confidence Gate
+    - Decision Readiness Level
+    - Context Aging
+    - Explainability
+    
+    CORE PRINCIPLE:
+    AURORA must help leaders think clearly earlier, not react faster later.
+    
+    PURPOSE:
+    - Prevent overreach
+    - Prevent misinterpretation
+    - Increase decision confidence without pressure
+    """
+    threat_id: str = Field(..., description="Associated threat object ID")
+    context_id: Optional[str] = Field(None, description="Associated context ID if applicable")
+    
+    confidence_gate: DecisionConfidenceGate = Field(
+        ..., description="Decision Confidence Gate status"
+    )
+    
+    decision_readiness_level: DecisionReadinessLevel = Field(
+        ..., description="Current Decision Readiness Level"
+    )
+    
+    drl_details: dict = Field(
+        default_factory=dict, description="DRL name, description, posture, and action guidance"
+    )
+    
+    context_aging: Optional[ContextAging] = Field(
+        None, description="Context aging status if applicable"
+    )
+    
+    explainability_panels: list[ExplainabilityPanel] = Field(
+        default_factory=list, description="Explainability panels for this context"
+    )
+    
+    overall_discipline_posture: str = Field(
+        ..., description="Overall decision discipline posture summary"
+    )
+    
+    restraint_indicators: list[str] = Field(
+        default_factory=list, description="Active restraint indicators"
+    )
+    
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    
+    master_disclaimer: str = Field(
+        default="Decision discipline safeguards ensure AURORA helps leaders think clearly earlier, not react faster later. All outputs prevent overreach, prevent misinterpretation, and increase decision confidence without pressure.",
+        description="Master disclaimer for decision discipline layer"
+    )
+    
+    governance_compliance: list[str] = Field(
+        default_factory=lambda: [
+            "Decision Confidence Gate controls recommendation scope",
+            "Decision Readiness Levels are advisory only - no enforcement",
+            "Context aging prevents permanent threat perception",
+            "All decisions are explainable and auditable",
+            "No urgency through animation or alarm-style UI"
+        ],
+        description="Governance compliance confirmation"
+    )

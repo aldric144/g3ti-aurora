@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, Shield, Activity, FileText, MessageSquare, Clock, Target, Brain, Eye, MapPin, Route, Lock, Layers, ChevronUp, ChevronDown } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, Shield, Activity, FileText, MessageSquare, Clock, Target, Brain, Eye, MapPin, Route, Lock, Layers, ChevronUp, ChevronDown, Info } from 'lucide-react';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -356,6 +356,87 @@ interface MultiRegionIntelligenceResponse {
   safety_constraints: string[];
 }
 
+interface ExplainabilityFactor {
+  factor_name: string;
+  factor_description: string;
+  contributed: boolean;
+  weight: number;
+}
+
+interface ExplainabilityPanel {
+  panel_type: string;
+  panel_title: string;
+  triggering_factors: ExplainabilityFactor[];
+  non_triggering_factors: ExplainabilityFactor[];
+  explicit_non_claims: string[];
+  summary: string;
+  confidence_note: string;
+  audit_reference: string | null;
+}
+
+interface DecisionConfidenceGate {
+  gate_status: string;
+  signal_diversity_score: number;
+  persistence_score: number;
+  cross_domain_convergence: number;
+  data_confidence: number;
+  composite_confidence: number;
+  threshold_met: boolean;
+  limiting_message: string | null;
+  allowed_outputs: string[];
+  restricted_outputs: string[];
+  gate_rationale: string;
+  evaluated_at: string;
+  audit_logged: boolean;
+}
+
+interface ContextAging {
+  context_id: string;
+  aging_status: string;
+  relevance_trend: string;
+  signal_persistence_change: number;
+  velocity_trend: string;
+  aging_message: string;
+  days_since_last_signal: number;
+  decay_rate: number;
+  removal_warning: boolean;
+  removal_explanation: string | null;
+  last_evaluated: string;
+  audit_logged: boolean;
+}
+
+interface DRLDetails {
+  name: string;
+  description: string;
+  posture: string;
+  action_guidance: string;
+}
+
+interface DecisionDisciplineLayer {
+  threat_id: string;
+  context_id: string | null;
+  confidence_gate: DecisionConfidenceGate;
+  decision_readiness_level: string;
+  drl_details: DRLDetails;
+  context_aging: ContextAging | null;
+  explainability_panels: ExplainabilityPanel[];
+  overall_discipline_posture: string;
+  restraint_indicators: string[];
+  last_updated: string;
+  master_disclaimer: string;
+  governance_compliance: string[];
+}
+
+interface DecisionDisciplineResponse {
+  decision_discipline: DecisionDisciplineLayer | null;
+  confidence_gate: DecisionConfidenceGate | null;
+  drl: string | null;
+  drl_details: DRLDetails | null;
+  context_aging: ContextAging | null;
+  explainability_panels: ExplainabilityPanel[];
+  governance_compliance: string[];
+}
+
 const STAGE_LABELS: Record<string, string> = {
   grievance_formation: 'Stage 1: Grievance Formation',
   cognitive_fixation: 'Stage 2: Cognitive Fixation',
@@ -471,6 +552,8 @@ function App() {
   const [multiRegionIntelligence, setMultiRegionIntelligence] = useState<MultiRegionIntelligence | null>(null);
   const [activeRegion, setActiveRegion] = useState<RegionContextStack | null>(null);
   const [regionSummaries, setRegionSummaries] = useState<RegionSummary[]>([]);
+  const [decisionDiscipline, setDecisionDiscipline] = useState<DecisionDisciplineResponse | null>(null);
+  const [expandedExplainability, setExpandedExplainability] = useState<string | null>(null);
 
   useEffect(() => {
     fetchThreats();
@@ -482,6 +565,7 @@ function App() {
   useEffect(() => {
     if (selectedThreat) {
       fetchThreatHistory(selectedThreat.id);
+      fetchDecisionDiscipline(selectedThreat.id);
     }
   }, [selectedThreat?.id]);
 
@@ -553,6 +637,16 @@ function App() {
       setRegionSummaries(data.region_summaries);
     } catch (error) {
       console.error('Failed to fetch multi-region intelligence:', error);
+    }
+  };
+
+  const fetchDecisionDiscipline = async (threatId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/decision-discipline/${threatId}`);
+      const data: DecisionDisciplineResponse = await response.json();
+      setDecisionDiscipline(data);
+    } catch (error) {
+      console.error('Failed to fetch decision discipline:', error);
     }
   };
 
@@ -1934,6 +2028,315 @@ function App() {
                                 {multiRegionIntelligence.master_disclaimer}
                               </AlertDescription>
                             </Alert>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {decisionDiscipline && (
+                      <Card className="bg-[#121C2D] border-[#16233A]">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Shield className="h-5 w-5 text-[#4F81BD]" />
+                              <CardTitle className="text-lg text-white">Decision Discipline Layer</CardTitle>
+                            </div>
+                            {decisionDiscipline.drl && (
+                              <Badge 
+                                variant="outline" 
+                                className={`border-[#4F81BD]/50 text-[#4F81BD] ${
+                                  decisionDiscipline.drl === 'drl_0' ? 'border-[#7A8CA3]/50 text-[#7A8CA3]' :
+                                  decisionDiscipline.drl === 'drl_1' ? 'border-[#4F81BD]/50 text-[#4F81BD]' :
+                                  decisionDiscipline.drl === 'drl_2' ? 'border-[#F4B400]/50 text-[#F4B400]' :
+                                  'border-[#F28C28]/50 text-[#F28C28]'
+                                }`}
+                              >
+                                {decisionDiscipline.drl_details?.name || decisionDiscipline.drl?.toUpperCase().replace('_', '-')}
+                              </Badge>
+                            )}
+                          </div>
+                          <CardDescription className="text-[#9FB0C7]">
+                            Confidence gating, readiness levels, and explainability for decision support
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {decisionDiscipline.confidence_gate && (
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="text-xs text-[#9FB0C7]">Decision Confidence Gate</div>
+                                <Badge 
+                                  variant="outline" 
+                                  className={`${
+                                    decisionDiscipline.confidence_gate.gate_status === 'open' 
+                                      ? 'border-[#3EC1C9]/50 text-[#3EC1C9]' 
+                                      : decisionDiscipline.confidence_gate.gate_status === 'limited'
+                                      ? 'border-[#F4B400]/50 text-[#F4B400]'
+                                      : 'border-[#7A8CA3]/50 text-[#7A8CA3]'
+                                  }`}
+                                >
+                                  {decisionDiscipline.confidence_gate.gate_status.toUpperCase()}
+                                </Badge>
+                              </div>
+                              
+                              <div className="grid grid-cols-4 gap-3 mb-4">
+                                <div className="bg-[#0B1220] rounded p-2">
+                                  <div className="text-xs text-[#9FB0C7]">Signal Diversity</div>
+                                  <div className="text-sm font-medium text-white">
+                                    {(decisionDiscipline.confidence_gate.signal_diversity_score * 100).toFixed(0)}%
+                                  </div>
+                                </div>
+                                <div className="bg-[#0B1220] rounded p-2">
+                                  <div className="text-xs text-[#9FB0C7]">Persistence</div>
+                                  <div className="text-sm font-medium text-white">
+                                    {(decisionDiscipline.confidence_gate.persistence_score * 100).toFixed(0)}%
+                                  </div>
+                                </div>
+                                <div className="bg-[#0B1220] rounded p-2">
+                                  <div className="text-xs text-[#9FB0C7]">Cross-Domain</div>
+                                  <div className="text-sm font-medium text-white">
+                                    {(decisionDiscipline.confidence_gate.cross_domain_convergence * 100).toFixed(0)}%
+                                  </div>
+                                </div>
+                                <div className="bg-[#0B1220] rounded p-2">
+                                  <div className="text-xs text-[#9FB0C7]">Data Confidence</div>
+                                  <div className="text-sm font-medium text-white">
+                                    {(decisionDiscipline.confidence_gate.data_confidence * 100).toFixed(0)}%
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="text-sm text-[#C9D4E3] leading-relaxed mb-3">
+                                {decisionDiscipline.confidence_gate.gate_rationale}
+                              </div>
+
+                              {decisionDiscipline.confidence_gate.limiting_message && (
+                                <Alert className="bg-[#0B1220] border-[#F4B400]/30">
+                                  <AlertTriangle className="h-4 w-4 text-[#F4B400]" />
+                                  <AlertDescription className="text-[#F4B400] text-sm">
+                                    {decisionDiscipline.confidence_gate.limiting_message}
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+
+                              {decisionDiscipline.confidence_gate.restricted_outputs.length > 0 && (
+                                <div className="mt-3">
+                                  <div className="text-xs text-[#9FB0C7] mb-2">Restricted Outputs</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {decisionDiscipline.confidence_gate.restricted_outputs.map((output, idx) => (
+                                      <Badge key={idx} variant="outline" className="border-[#7A8CA3]/30 text-[#7A8CA3] text-xs">
+                                        {output}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {decisionDiscipline.drl_details && (
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-3">Decision Readiness Level</div>
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className={`text-lg font-bold ${
+                                  decisionDiscipline.drl === 'drl_0' ? 'text-[#7A8CA3]' :
+                                  decisionDiscipline.drl === 'drl_1' ? 'text-[#4F81BD]' :
+                                  decisionDiscipline.drl === 'drl_2' ? 'text-[#F4B400]' :
+                                  'text-[#F28C28]'
+                                }`}>
+                                  {decisionDiscipline.drl_details.name}
+                                </div>
+                                <Badge variant="outline" className="border-[#7A8CA3]/30 text-[#9FB0C7] text-xs">
+                                  {decisionDiscipline.drl_details.posture}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-[#C9D4E3] leading-relaxed mb-3">
+                                {decisionDiscipline.drl_details.description}
+                              </p>
+                              <div className="bg-[#0B1220] rounded p-3">
+                                <div className="text-xs text-[#9FB0C7] mb-1">Action Guidance</div>
+                                <p className="text-sm text-white">{decisionDiscipline.drl_details.action_guidance}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {decisionDiscipline.context_aging && (
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="text-xs text-[#9FB0C7]">Context Aging Status</div>
+                                <Badge 
+                                  variant="outline" 
+                                  className={`${
+                                    decisionDiscipline.context_aging.aging_status === 'stable' 
+                                      ? 'border-[#3EC1C9]/50 text-[#3EC1C9]' 
+                                      : decisionDiscipline.context_aging.aging_status === 'cooling'
+                                      ? 'border-[#4F81BD]/50 text-[#4F81BD]'
+                                      : decisionDiscipline.context_aging.aging_status === 'decaying'
+                                      ? 'border-[#F4B400]/50 text-[#F4B400]'
+                                      : 'border-[#7A8CA3]/50 text-[#7A8CA3]'
+                                  }`}
+                                >
+                                  {decisionDiscipline.context_aging.aging_status.toUpperCase()}
+                                </Badge>
+                              </div>
+                              
+                              <p className="text-sm text-[#C9D4E3] leading-relaxed mb-3">
+                                {decisionDiscipline.context_aging.aging_message}
+                              </p>
+
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-[#0B1220] rounded p-2">
+                                  <div className="text-xs text-[#9FB0C7]">Days Since Signal</div>
+                                  <div className="text-sm font-medium text-white">
+                                    {decisionDiscipline.context_aging.days_since_last_signal}
+                                  </div>
+                                </div>
+                                <div className="bg-[#0B1220] rounded p-2">
+                                  <div className="text-xs text-[#9FB0C7]">Decay Rate</div>
+                                  <div className="text-sm font-medium text-white">
+                                    {(decisionDiscipline.context_aging.decay_rate * 100).toFixed(1)}%
+                                  </div>
+                                </div>
+                                <div className="bg-[#0B1220] rounded p-2">
+                                  <div className="text-xs text-[#9FB0C7]">Velocity Trend</div>
+                                  <div className="text-sm font-medium text-white">
+                                    {decisionDiscipline.context_aging.velocity_trend}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {decisionDiscipline.context_aging.removal_warning && (
+                                <Alert className="mt-3 bg-[#0B1220] border-[#F4B400]/30">
+                                  <AlertTriangle className="h-4 w-4 text-[#F4B400]" />
+                                  <AlertDescription className="text-[#F4B400] text-sm">
+                                    {decisionDiscipline.context_aging.removal_explanation || 'Context may be removed due to prolonged inactivity'}
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+                            </div>
+                          )}
+
+                          {decisionDiscipline.explainability_panels && decisionDiscipline.explainability_panels.length > 0 && (
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-3">Explainability Panels</div>
+                              <div className="space-y-2">
+                                {decisionDiscipline.explainability_panels.map((panel, idx) => (
+                                  <div key={idx} className="bg-[#0B1220] rounded-lg border border-[#16233A]">
+                                    <button
+                                      onClick={() => setExpandedExplainability(
+                                        expandedExplainability === `${panel.panel_type}-${idx}` ? null : `${panel.panel_type}-${idx}`
+                                      )}
+                                      className="w-full p-3 flex items-center justify-between text-left hover:bg-[#16233A]/50 transition-colors rounded-lg"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <Info className="h-4 w-4 text-[#4F81BD]" />
+                                        <span className="text-sm text-white">Why this is shown: {panel.panel_title}</span>
+                                      </div>
+                                      {expandedExplainability === `${panel.panel_type}-${idx}` ? (
+                                        <ChevronUp className="h-4 w-4 text-[#9FB0C7]" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4 text-[#9FB0C7]" />
+                                      )}
+                                    </button>
+                                    
+                                    {expandedExplainability === `${panel.panel_type}-${idx}` && (
+                                      <div className="px-3 pb-3 space-y-3">
+                                        <p className="text-sm text-[#C9D4E3] leading-relaxed">{panel.summary}</p>
+                                        
+                                        {panel.triggering_factors.length > 0 && (
+                                          <div>
+                                            <div className="text-xs text-[#9FB0C7] mb-2">Triggering Factors</div>
+                                            <div className="space-y-1">
+                                              {panel.triggering_factors.map((factor, fidx) => (
+                                                <div key={fidx} className="flex items-start gap-2 text-sm">
+                                                  <div className="w-1.5 h-1.5 rounded-full bg-[#3EC1C9] mt-1.5 flex-shrink-0" />
+                                                  <span className="text-[#C9D4E3]">{factor.factor_description}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {panel.non_triggering_factors.length > 0 && (
+                                          <div>
+                                            <div className="text-xs text-[#9FB0C7] mb-2">Non-Triggering Factors</div>
+                                            <div className="space-y-1">
+                                              {panel.non_triggering_factors.map((factor, fidx) => (
+                                                <div key={fidx} className="flex items-start gap-2 text-sm">
+                                                  <div className="w-1.5 h-1.5 rounded-full bg-[#7A8CA3] mt-1.5 flex-shrink-0" />
+                                                  <span className="text-[#9FB0C7]">{factor.factor_description}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {panel.explicit_non_claims.length > 0 && (
+                                          <div>
+                                            <div className="text-xs text-[#9FB0C7] mb-2">What This Does NOT Claim</div>
+                                            <div className="space-y-1">
+                                              {panel.explicit_non_claims.map((claim, cidx) => (
+                                                <div key={cidx} className="flex items-start gap-2 text-sm">
+                                                  <div className="w-1.5 h-1.5 rounded-full bg-[#F4B400] mt-1.5 flex-shrink-0" />
+                                                  <span className="text-[#F4B400]/80">{claim}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        <div className="text-xs text-[#9FB0C7] italic pt-2 border-t border-[#16233A]">
+                                          {panel.confidence_note}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {decisionDiscipline.decision_discipline && (
+                            <>
+                              <div className="bg-[#16233A] rounded-lg p-4">
+                                <div className="text-xs text-[#9FB0C7] mb-3">Restraint Indicators</div>
+                                <div className="flex flex-wrap gap-2">
+                                  {decisionDiscipline.decision_discipline.restraint_indicators.map((indicator, idx) => (
+                                    <Badge key={idx} variant="outline" className="border-[#4F81BD]/30 text-[#4F81BD] text-xs">
+                                      {indicator}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <Alert className="bg-[#0B1220] border-[#4F81BD]/30">
+                                <Shield className="h-4 w-4 text-[#4F81BD]" />
+                                <AlertTitle className="text-[#4F81BD] text-sm">Decision Discipline Posture</AlertTitle>
+                                <AlertDescription className="text-[#9FB0C7] text-xs">
+                                  {decisionDiscipline.decision_discipline.overall_discipline_posture}
+                                </AlertDescription>
+                              </Alert>
+
+                              <Alert className="bg-[#0B1220] border-[#F4B400]/30">
+                                <Lock className="h-4 w-4 text-[#F4B400]" />
+                                <AlertTitle className="text-[#F4B400] text-sm">Master Disclaimer</AlertTitle>
+                                <AlertDescription className="text-[#9FB0C7] text-xs">
+                                  {decisionDiscipline.decision_discipline.master_disclaimer}
+                                </AlertDescription>
+                              </Alert>
+                            </>
+                          )}
+
+                          {decisionDiscipline.governance_compliance && decisionDiscipline.governance_compliance.length > 0 && (
+                            <div className="bg-[#16233A] rounded-lg p-4">
+                              <div className="text-xs text-[#9FB0C7] mb-3">Governance Compliance</div>
+                              <div className="flex flex-wrap gap-2">
+                                {decisionDiscipline.governance_compliance.map((item, idx) => (
+                                  <Badge key={idx} variant="outline" className="border-[#3EC1C9]/30 text-[#3EC1C9] text-xs">
+                                    {item}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
                           )}
                         </CardContent>
                       </Card>

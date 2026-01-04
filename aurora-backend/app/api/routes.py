@@ -43,6 +43,13 @@ from app.models.schemas import (
     RegionContextStack,
     RegionSummary,
     DecisionContext,
+    DecisionDisciplineLayer,
+    DecisionConfidenceGate,
+    DecisionReadinessLevel,
+    ContextAging,
+    ExplainabilityPanel,
+    SilentAuditEntry,
+    DRL_DESCRIPTIONS,
 )
 from app.database.store import get_store
 from app.modules.signal_ingestion import SignalIngestionEngine
@@ -954,3 +961,219 @@ async def prioritize_region_contexts(region_id: str):
         )
     
     return contexts
+
+
+class DecisionDisciplineResponse(BaseModel):
+    """Response model for Decision Discipline layer"""
+    decision_discipline: Optional[DecisionDisciplineLayer]
+    confidence_gate: Optional[DecisionConfidenceGate]
+    drl: Optional[str]
+    drl_details: Optional[dict]
+    context_aging: Optional[ContextAging]
+    explainability_panels: list[ExplainabilityPanel]
+    governance_compliance: list[str]
+
+
+class DRLResponse(BaseModel):
+    """Response model for Decision Readiness Level"""
+    drl: str
+    drl_details: dict
+    threat_id: str
+
+
+@router.get("/decision-discipline/{threat_id}", response_model=DecisionDisciplineResponse)
+async def get_decision_discipline(threat_id: str):
+    """
+    Get Decision Discipline & Trust Hardening layer for a threat.
+    
+    CORE PRINCIPLE: AURORA must help leaders think clearly earlier, not react faster later.
+    
+    Components:
+    - Decision Confidence Gate (gating mechanism, not a score)
+    - Decision Readiness Levels (DRL-0 to DRL-3, advisory only)
+    - Context Aging & Decay indicators
+    - Explainability Panels ("Why This Is Shown")
+    
+    All outputs prevent overreach, prevent misinterpretation, and increase decision confidence without pressure.
+    """
+    store = get_store()
+    
+    discipline_layer = store.get_decision_discipline_layer(threat_id)
+    
+    if not discipline_layer:
+        confidence_gate = store.evaluate_confidence_gate(threat_id)
+        drl, drl_details = store.calculate_drl(threat_id)
+        
+        return DecisionDisciplineResponse(
+            decision_discipline=None,
+            confidence_gate=confidence_gate,
+            drl=drl.value if drl else None,
+            drl_details=drl_details,
+            context_aging=None,
+            explainability_panels=[],
+            governance_compliance=[
+                "Decision Confidence Gate controls recommendation scope",
+                "Decision Readiness Levels are advisory only - no enforcement",
+                "Context aging prevents permanent threat perception",
+                "All decisions are explainable and auditable",
+                "No urgency through animation or alarm-style UI"
+            ]
+        )
+    
+    return DecisionDisciplineResponse(
+        decision_discipline=discipline_layer,
+        confidence_gate=discipline_layer.confidence_gate,
+        drl=discipline_layer.decision_readiness_level.value,
+        drl_details=discipline_layer.drl_details,
+        context_aging=discipline_layer.context_aging,
+        explainability_panels=discipline_layer.explainability_panels,
+        governance_compliance=discipline_layer.governance_compliance
+    )
+
+
+@router.get("/decision-discipline/{threat_id}/confidence-gate", response_model=Optional[DecisionConfidenceGate])
+async def get_confidence_gate(threat_id: str):
+    """
+    Get Decision Confidence Gate status for a threat.
+    
+    This is a GATING MECHANISM, not a score.
+    Controls what the system is allowed to recommend.
+    
+    Gate Status:
+    - OPEN: Full recommendations available
+    - LIMITED: Some recommendations restricted
+    - CLOSED: Monitoring posture only
+    
+    If confidence is below threshold:
+    - Limit outputs to monitoring/informational posture
+    - Display appropriate limiting language
+    - Log gating decisions in audit trail
+    """
+    store = get_store()
+    
+    discipline_layer = store.get_decision_discipline_layer(threat_id)
+    if discipline_layer:
+        return discipline_layer.confidence_gate
+    
+    return store.evaluate_confidence_gate(threat_id)
+
+
+@router.get("/decision-discipline/{threat_id}/drl", response_model=DRLResponse)
+async def get_drl(threat_id: str):
+    """
+    Get Decision Readiness Level for a threat.
+    
+    DRLs are advisory framing, NOT threat levels.
+    One DRL active per context at a time.
+    
+    Levels:
+    - DRL-0: Informational Awareness
+    - DRL-1: Monitor & Observe
+    - DRL-2: Consider Engagement
+    - DRL-3: Prepare Cross-Functional Response
+    
+    CONSTRAINTS:
+    - Advisory only, no enforcement language
+    - Integrates with Decision Pathway Intelligence
+    - No surveillance or investigative framing
+    """
+    store = get_store()
+    
+    discipline_layer = store.get_decision_discipline_layer(threat_id)
+    if discipline_layer:
+        return DRLResponse(
+            drl=discipline_layer.decision_readiness_level.value,
+            drl_details=discipline_layer.drl_details,
+            threat_id=threat_id
+        )
+    
+    drl, drl_details = store.calculate_drl(threat_id)
+    return DRLResponse(
+        drl=drl.value,
+        drl_details=drl_details,
+        threat_id=threat_id
+    )
+
+
+@router.get("/decision-discipline/{threat_id}/explainability/{panel_type}", response_model=Optional[ExplainabilityPanel])
+async def get_explainability_panel(threat_id: str, panel_type: str):
+    """
+    Get 'Why This Is Shown' explainability panel for a specific panel type.
+    
+    Available panel types:
+    - decision_pathway
+    - impact_forecast
+    - authority_recommendations
+    - regional_context
+    
+    Content explains:
+    - What factors caused the panel to appear
+    - What factors did NOT trigger it
+    - What the system is explicitly NOT claiming
+    
+    Requirements:
+    - Concise
+    - Plain-language
+    - Supports audits and demos
+    """
+    store = get_store()
+    return store.get_explainability_panel(panel_type, threat_id)
+
+
+@router.get("/decision-discipline/context-aging/{context_id}", response_model=Optional[ContextAging])
+async def get_context_aging(context_id: str):
+    """
+    Get Context Aging & Decay status for a context.
+    
+    Aging Status:
+    - STABLE: Context stable but non-escalating
+    - COOLING: Context cooling based on velocity trends
+    - DECAYING: Context relevance decreasing due to reduced signal persistence
+    - STALE: Context approaching staleness threshold
+    
+    RULES:
+    - Contexts must not feel permanent
+    - No sudden removals without explanation
+    - All aging events logged for auditability
+    """
+    store = get_store()
+    return store.get_context_aging(context_id)
+
+
+@router.get("/silent-audit", response_model=list[SilentAuditEntry])
+async def get_silent_audit_entries(limit: int = Query(default=100, le=1000)):
+    """
+    Get Silent Audit entries (foundational hook).
+    
+    Enables future capabilities for:
+    - Review of historical system state
+    - Post-hoc decision review
+    - Training and governance use
+    
+    NOTE: This is a foundational data structure only.
+    No live UI exposure is required yet.
+    """
+    store = get_store()
+    return store.get_silent_audit_entries(limit)
+
+
+@router.get("/drl-definitions", response_model=dict)
+async def get_drl_definitions():
+    """
+    Get all Decision Readiness Level definitions.
+    
+    Returns the full DRL taxonomy with:
+    - Name
+    - Description
+    - Posture
+    - Action Guidance
+    
+    DRLs are advisory framing, NOT threat levels.
+    """
+    return {
+        "drl_0": DRL_DESCRIPTIONS[DecisionReadinessLevel.DRL_0],
+        "drl_1": DRL_DESCRIPTIONS[DecisionReadinessLevel.DRL_1],
+        "drl_2": DRL_DESCRIPTIONS[DecisionReadinessLevel.DRL_2],
+        "drl_3": DRL_DESCRIPTIONS[DecisionReadinessLevel.DRL_3],
+        "disclaimer": "Decision Readiness Levels are advisory framing only. They are NOT threat levels and do not mandate any specific action."
+    }

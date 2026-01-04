@@ -44,6 +44,16 @@ from app.models.schemas import (
     RegionContextStack,
     MultiRegionIntelligence,
     RegionSummary,
+    DecisionReadinessLevel,
+    DecisionConfidenceGateStatus,
+    DecisionConfidenceGate,
+    ExplainabilityFactor,
+    ExplainabilityPanel,
+    ContextAgingStatus,
+    ContextAging,
+    SilentAuditEntry,
+    DecisionDisciplineLayer,
+    DRL_DESCRIPTIONS,
 )
 
 
@@ -82,11 +92,15 @@ class InMemoryStore:
         
         self.multi_region_intelligence: Optional[MultiRegionIntelligence] = None
         
+        self.decision_discipline_layers: dict[str, DecisionDisciplineLayer] = {}
+        self.silent_audit_entries: list[SilentAuditEntry] = []
+        
         self._initialized = True
         
         self._seed_jurisdictions()
         self._seed_demo_data()
         self._seed_multi_region_intelligence()
+        self._seed_decision_discipline()
     
     def _seed_jurisdictions(self):
         """
@@ -1516,6 +1530,485 @@ class InMemoryStore:
             region_stack.last_updated = datetime.utcnow()
             
             return region_stack.contexts
+    
+    def _seed_decision_discipline(self):
+        """
+        Seed Decision Discipline & Trust Hardening data for demo contexts.
+        
+        CORE PRINCIPLE: AURORA must help leaders think clearly earlier, not react faster later.
+        
+        Components:
+        - Decision Confidence Gate
+        - Decision Readiness Levels (DRL)
+        - Context Aging
+        - Explainability Panels
+        - Silent Audit Mode (foundational hook)
+        """
+        threats = list(self.threats.values())
+        if not threats:
+            return
+        
+        primary_threat = threats[0]
+        
+        confidence_gate = DecisionConfidenceGate(
+            gate_status=DecisionConfidenceGateStatus.OPEN,
+            signal_diversity_score=0.73,
+            persistence_score=0.82,
+            cross_domain_convergence=0.68,
+            data_confidence=0.71,
+            composite_confidence=0.735,
+            threshold_met=True,
+            limiting_message=None,
+            allowed_outputs=[
+                "Decision Pathways",
+                "Authority-Aware Recommendations",
+                "Impact Forecasting",
+                "Regional Context"
+            ],
+            restricted_outputs=[],
+            gate_rationale="Confidence threshold met. Signal diversity (73%), persistence (82%), cross-domain convergence (68%), and data confidence (71%) all exceed minimum thresholds. Full decision pathway recommendations are available.",
+            audit_logged=True
+        )
+        
+        drl = DecisionReadinessLevel.DRL_2
+        drl_details = DRL_DESCRIPTIONS[drl]
+        
+        context_aging = ContextAging(
+            context_id="primary-context",
+            aging_status=ContextAgingStatus.STABLE,
+            relevance_trend="stable",
+            signal_persistence_change=0.05,
+            velocity_trend="stable",
+            aging_message="Context stable but non-escalating. Signal persistence remains consistent.",
+            days_since_last_signal=1,
+            decay_rate=0.02,
+            removal_warning=False,
+            removal_explanation=None,
+            audit_logged=True
+        )
+        
+        decision_pathway_explainability = ExplainabilityPanel(
+            panel_type="decision_pathway",
+            panel_title="Decision Pathway Intelligence",
+            triggering_factors=[
+                ExplainabilityFactor(
+                    factor_name="Signal Convergence",
+                    factor_description="Multiple signals from different domains are converging on similar patterns",
+                    contributed=True,
+                    weight=0.35
+                ),
+                ExplainabilityFactor(
+                    factor_name="Intent Stage Progression",
+                    factor_description="Pattern has progressed to Cognitive Fixation stage",
+                    contributed=True,
+                    weight=0.30
+                ),
+                ExplainabilityFactor(
+                    factor_name="Persistence Over Time",
+                    factor_description="Pattern has persisted for more than 72 hours",
+                    contributed=True,
+                    weight=0.20
+                ),
+                ExplainabilityFactor(
+                    factor_name="Historical Pattern Match",
+                    factor_description="Pattern matches historical analogs with known outcomes",
+                    contributed=True,
+                    weight=0.15
+                )
+            ],
+            non_triggering_factors=[
+                ExplainabilityFactor(
+                    factor_name="Rapid Escalation",
+                    factor_description="No rapid escalation detected in recent signals",
+                    contributed=False,
+                    weight=0.0
+                ),
+                ExplainabilityFactor(
+                    factor_name="Cross-Regional Spread",
+                    factor_description="Pattern remains localized to primary region",
+                    contributed=False,
+                    weight=0.0
+                )
+            ],
+            explicit_non_claims=[
+                "This panel does NOT predict specific events or outcomes",
+                "This panel does NOT identify individuals or groups",
+                "This panel does NOT recommend enforcement actions",
+                "This panel does NOT provide investigative leads"
+            ],
+            summary="Decision pathways are shown because multiple signals are converging with sustained persistence. The pattern matches historical analogs and has progressed to an intent stage warranting engagement consideration.",
+            confidence_note="Confidence in this display: 73.5% based on composite signal analysis",
+            audit_reference="audit-dp-001"
+        )
+        
+        impact_forecast_explainability = ExplainabilityPanel(
+            panel_type="impact_forecast",
+            panel_title="Impact Forecasting",
+            triggering_factors=[
+                ExplainabilityFactor(
+                    factor_name="Economic Stress Indicators",
+                    factor_description="Economic stress signals detected in primary region",
+                    contributed=True,
+                    weight=0.40
+                ),
+                ExplainabilityFactor(
+                    factor_name="Community Stability Signals",
+                    factor_description="Community stability indicators showing stress patterns",
+                    contributed=True,
+                    weight=0.30
+                ),
+                ExplainabilityFactor(
+                    factor_name="Trajectory Analysis",
+                    factor_description="Current trajectory suggests potential for system-level impact",
+                    contributed=True,
+                    weight=0.30
+                )
+            ],
+            non_triggering_factors=[
+                ExplainabilityFactor(
+                    factor_name="Infrastructure Disruption",
+                    factor_description="No infrastructure disruption signals detected",
+                    contributed=False,
+                    weight=0.0
+                )
+            ],
+            explicit_non_claims=[
+                "This panel does NOT predict specific incidents",
+                "This panel does NOT forecast timing of events",
+                "This panel does NOT attribute impact to specific actors"
+            ],
+            summary="Impact forecasting is shown because economic stress and community stability indicators suggest potential system-level consequences if current trajectory persists.",
+            confidence_note="Confidence in this display: 65% based on trajectory analysis",
+            audit_reference="audit-if-001"
+        )
+        
+        authority_explainability = ExplainabilityPanel(
+            panel_type="authority_recommendations",
+            panel_title="Authority-Aware Recommendations",
+            triggering_factors=[
+                ExplainabilityFactor(
+                    factor_name="Cross-Functional Relevance",
+                    factor_description="Pattern affects multiple leadership domains",
+                    contributed=True,
+                    weight=0.35
+                ),
+                ExplainabilityFactor(
+                    factor_name="Decision Readiness Level",
+                    factor_description="DRL-2 indicates engagement consideration is appropriate",
+                    contributed=True,
+                    weight=0.35
+                ),
+                ExplainabilityFactor(
+                    factor_name="Coordination Opportunity",
+                    factor_description="Pattern suggests value in cross-stakeholder coordination",
+                    contributed=True,
+                    weight=0.30
+                )
+            ],
+            non_triggering_factors=[
+                ExplainabilityFactor(
+                    factor_name="Emergency Response",
+                    factor_description="Pattern does not indicate emergency response needs",
+                    contributed=False,
+                    weight=0.0
+                )
+            ],
+            explicit_non_claims=[
+                "This panel does NOT direct specific individuals to act",
+                "This panel does NOT mandate any response",
+                "This panel does NOT provide tactical instructions"
+            ],
+            summary="Authority recommendations are shown because the pattern affects multiple leadership domains and the current DRL suggests engagement consideration is appropriate.",
+            confidence_note="Confidence in this display: 78% based on domain analysis",
+            audit_reference="audit-ar-001"
+        )
+        
+        regional_context_explainability = ExplainabilityPanel(
+            panel_type="regional_context",
+            panel_title="Regional Context Summary",
+            triggering_factors=[
+                ExplainabilityFactor(
+                    factor_name="Geographic Signal Clustering",
+                    factor_description="Signals cluster in identifiable geographic patterns",
+                    contributed=True,
+                    weight=0.40
+                ),
+                ExplainabilityFactor(
+                    factor_name="Regional Economic Profile",
+                    factor_description="Regional economic characteristics relevant to pattern",
+                    contributed=True,
+                    weight=0.35
+                ),
+                ExplainabilityFactor(
+                    factor_name="Population Scale",
+                    factor_description="Population scale relevant to potential impact assessment",
+                    contributed=True,
+                    weight=0.25
+                )
+            ],
+            non_triggering_factors=[
+                ExplainabilityFactor(
+                    factor_name="Precise Location Data",
+                    factor_description="No precise location data is used or displayed",
+                    contributed=False,
+                    weight=0.0
+                )
+            ],
+            explicit_non_claims=[
+                "This panel does NOT identify specific locations",
+                "This panel does NOT track individuals or groups",
+                "This panel does NOT provide surveillance data"
+            ],
+            summary="Regional context is shown because signals cluster in geographic patterns that are relevant to understanding the pattern's scope and potential impact.",
+            confidence_note="Confidence in this display: 76% based on geographic analysis",
+            audit_reference="audit-rc-001"
+        )
+        
+        discipline_layer = DecisionDisciplineLayer(
+            threat_id=primary_threat.id,
+            context_id="primary-context",
+            confidence_gate=confidence_gate,
+            decision_readiness_level=drl,
+            drl_details=drl_details,
+            context_aging=context_aging,
+            explainability_panels=[
+                decision_pathway_explainability,
+                impact_forecast_explainability,
+                authority_explainability,
+                regional_context_explainability
+            ],
+            overall_discipline_posture="Engagement consideration with sustained monitoring. Confidence gate is open. Context is stable.",
+            restraint_indicators=[
+                "No urgency indicators active",
+                "No alarm-style UI elements",
+                "No enforcement language",
+                "Advisory posture maintained"
+            ]
+        )
+        
+        self.decision_discipline_layers[primary_threat.id] = discipline_layer
+        
+        silent_audit_entry = SilentAuditEntry(
+            entry_type="state_snapshot",
+            threat_id=primary_threat.id,
+            context_id="primary-context",
+            system_state_snapshot={
+                "threat_probability": primary_threat.probability_curve.current_probability if primary_threat.probability_curve else 0,
+                "intent_stage": primary_threat.intent_gradient.current_stage.value if primary_threat.intent_gradient else None,
+                "signal_count": len(primary_threat.signals),
+                "monitoring_posture": primary_threat.current_nio.monitoring_posture.value if primary_threat.current_nio else "unknown"
+            },
+            decision_inputs={
+                "signal_diversity": 0.73,
+                "persistence": 0.82,
+                "cross_domain_convergence": 0.68,
+                "data_confidence": 0.71
+            },
+            decision_outputs={
+                "gate_status": "open",
+                "drl_level": "drl_2",
+                "allowed_outputs": ["Decision Pathways", "Authority-Aware Recommendations", "Impact Forecasting", "Regional Context"]
+            },
+            gate_status="open",
+            drl_level="drl_2",
+            aging_status="stable",
+            governance_tags=["decision_discipline", "trust_hardening", "phase_3x"]
+        )
+        
+        self.silent_audit_entries.append(silent_audit_entry)
+        
+        self._log_audit(
+            action_type="decision_discipline_seeded",
+            actor="system",
+            target_type="threat",
+            target_id=primary_threat.id,
+            reasoning="Decision Discipline & Trust Hardening layer seeded for demo",
+            metadata={"drl": drl.value, "gate_status": "open"}
+        )
+    
+    def get_decision_discipline_layer(self, threat_id: str) -> Optional[DecisionDisciplineLayer]:
+        """Get the Decision Discipline layer for a threat"""
+        with self._data_lock:
+            return self.decision_discipline_layers.get(threat_id)
+    
+    def evaluate_confidence_gate(self, threat_id: str) -> Optional[DecisionConfidenceGate]:
+        """
+        Evaluate the Decision Confidence Gate for a threat.
+        
+        This is a GATING MECHANISM, not a score.
+        Controls what the system is allowed to recommend.
+        """
+        with self._data_lock:
+            threat = self.threats.get(threat_id)
+            if not threat:
+                return None
+            
+            signal_diversity = len(set(s.domain for s in threat.signals)) / 3.0 if threat.signals else 0
+            persistence = 0.82
+            cross_domain = threat.convergence_score if threat.convergence_score else 0.5
+            data_confidence = sum(s.raw_confidence for s in threat.signals) / len(threat.signals) if threat.signals else 0.5
+            
+            composite = (signal_diversity * 0.25 + persistence * 0.25 + cross_domain * 0.25 + data_confidence * 0.25)
+            
+            threshold = 0.5
+            threshold_met = composite >= threshold
+            
+            if composite >= 0.7:
+                gate_status = DecisionConfidenceGateStatus.OPEN
+                limiting_message = None
+                allowed_outputs = ["Decision Pathways", "Authority-Aware Recommendations", "Impact Forecasting", "Regional Context"]
+                restricted_outputs = []
+                rationale = f"Confidence threshold exceeded ({composite:.1%}). Full recommendations available."
+            elif composite >= 0.5:
+                gate_status = DecisionConfidenceGateStatus.LIMITED
+                limiting_message = "Decision pathways are limited due to moderate convergence. Enhanced monitoring recommended."
+                allowed_outputs = ["Monitoring Posture", "Regional Context", "Limited Decision Pathways"]
+                restricted_outputs = ["Full Authority Recommendations", "Detailed Impact Forecasting"]
+                rationale = f"Moderate confidence ({composite:.1%}). Some recommendations limited."
+            else:
+                gate_status = DecisionConfidenceGateStatus.CLOSED
+                limiting_message = "Decision pathways are limited due to insufficient convergence. Monitoring posture recommended."
+                allowed_outputs = ["Monitoring Posture", "Informational Awareness"]
+                restricted_outputs = ["Decision Pathways", "Authority Recommendations", "Impact Forecasting"]
+                rationale = f"Confidence below threshold ({composite:.1%}). Monitoring posture only."
+            
+            gate = DecisionConfidenceGate(
+                gate_status=gate_status,
+                signal_diversity_score=signal_diversity,
+                persistence_score=persistence,
+                cross_domain_convergence=cross_domain,
+                data_confidence=data_confidence,
+                composite_confidence=composite,
+                threshold_met=threshold_met,
+                limiting_message=limiting_message,
+                allowed_outputs=allowed_outputs,
+                restricted_outputs=restricted_outputs,
+                gate_rationale=rationale,
+                audit_logged=True
+            )
+            
+            self._log_audit(
+                action_type="confidence_gate_evaluated",
+                actor="system",
+                target_type="threat",
+                target_id=threat_id,
+                reasoning=f"Decision Confidence Gate evaluated for threat {threat_id}",
+                metadata={"gate_status": gate_status.value, "composite": composite}
+            )
+            
+            return gate
+    
+    def calculate_drl(self, threat_id: str) -> tuple[DecisionReadinessLevel, dict]:
+        """
+        Calculate Decision Readiness Level for a threat.
+        
+        DRLs are advisory framing, NOT threat levels.
+        One DRL active per context at a time.
+        """
+        with self._data_lock:
+            threat = self.threats.get(threat_id)
+            if not threat:
+                return DecisionReadinessLevel.DRL_0, DRL_DESCRIPTIONS[DecisionReadinessLevel.DRL_0]
+            
+            intent_stage = threat.intent_gradient.current_stage if threat.intent_gradient else IntentStage.GRIEVANCE_FORMATION
+            probability = (threat.probability_curve.current_probability / 100.0) if threat.probability_curve else 0.5
+            
+            if intent_stage == IntentStage.MOBILIZATION_RISK or probability >= 0.8:
+                drl = DecisionReadinessLevel.DRL_3
+            elif intent_stage == IntentStage.BEHAVIORAL_ACCELERATION or probability >= 0.65:
+                drl = DecisionReadinessLevel.DRL_2
+            elif intent_stage == IntentStage.COGNITIVE_FIXATION or probability >= 0.5:
+                drl = DecisionReadinessLevel.DRL_1
+            else:
+                drl = DecisionReadinessLevel.DRL_0
+            
+            return drl, DRL_DESCRIPTIONS[drl]
+    
+    def get_context_aging(self, context_id: str) -> Optional[ContextAging]:
+        """Get context aging status"""
+        with self._data_lock:
+            for layer in self.decision_discipline_layers.values():
+                if layer.context_aging and layer.context_aging.context_id == context_id:
+                    return layer.context_aging
+            return None
+    
+    def update_context_aging(self, context_id: str, days_since_signal: int = 0) -> Optional[ContextAging]:
+        """
+        Update context aging based on signal activity.
+        
+        RULES:
+        - Contexts must not feel permanent
+        - No sudden removals without explanation
+        - All aging events logged for auditability
+        """
+        with self._data_lock:
+            if days_since_signal <= 1:
+                status = ContextAgingStatus.STABLE
+                message = "Context stable but non-escalating. Signal persistence remains consistent."
+                decay_rate = 0.02
+                removal_warning = False
+            elif days_since_signal <= 3:
+                status = ContextAgingStatus.COOLING
+                message = "Context cooling based on velocity trends. Reduced signal activity detected."
+                decay_rate = 0.10
+                removal_warning = False
+            elif days_since_signal <= 7:
+                status = ContextAgingStatus.DECAYING
+                message = "Context relevance decreasing due to reduced signal persistence."
+                decay_rate = 0.25
+                removal_warning = True
+            else:
+                status = ContextAgingStatus.STALE
+                message = "Context approaching staleness threshold. Consider archival if no new signals emerge."
+                decay_rate = 0.50
+                removal_warning = True
+            
+            aging = ContextAging(
+                context_id=context_id,
+                aging_status=status,
+                relevance_trend="decreasing" if days_since_signal > 1 else "stable",
+                signal_persistence_change=-0.05 * days_since_signal,
+                velocity_trend="decelerating" if days_since_signal > 1 else "stable",
+                aging_message=message,
+                days_since_last_signal=days_since_signal,
+                decay_rate=decay_rate,
+                removal_warning=removal_warning,
+                removal_explanation="Context will be archived if no new signals within 14 days" if removal_warning else None,
+                audit_logged=True
+            )
+            
+            self._log_audit(
+                action_type="context_aging_updated",
+                actor="system",
+                target_type="context",
+                target_id=context_id,
+                reasoning=f"Context aging updated for {context_id}",
+                metadata={"status": status.value, "days_since_signal": days_since_signal}
+            )
+            
+            return aging
+    
+    def get_explainability_panel(self, panel_type: str, threat_id: str) -> Optional[ExplainabilityPanel]:
+        """Get explainability panel for a specific panel type"""
+        with self._data_lock:
+            layer = self.decision_discipline_layers.get(threat_id)
+            if not layer:
+                return None
+            
+            for panel in layer.explainability_panels:
+                if panel.panel_type == panel_type:
+                    return panel
+            return None
+    
+    def get_silent_audit_entries(self, limit: int = 100) -> list[SilentAuditEntry]:
+        """Get silent audit entries for review (foundational hook)"""
+        with self._data_lock:
+            return self.silent_audit_entries[-limit:]
+    
+    def add_silent_audit_entry(self, entry: SilentAuditEntry):
+        """Add a silent audit entry (foundational hook)"""
+        with self._data_lock:
+            self.silent_audit_entries.append(entry)
 
 
 _store_instance: Optional[InMemoryStore] = None
