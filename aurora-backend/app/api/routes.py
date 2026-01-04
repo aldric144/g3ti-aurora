@@ -500,11 +500,17 @@ async def list_jurisdictions():
     """
     List all available jurisdiction contexts.
     
+    CRITICAL DISTINCTION:
+    - United States: Real operational context with full decision intelligence
+    - Non-US Jurisdictions: Synthetic demonstration data ONLY for architectural validation
+    
     IMPORTANT: Jurisdiction context adjusts signal interpretation, weighting,
     historical analogs, and narrative framing. It does NOT activate new data
     collection or imply active monitoring of individuals or regions.
     
     All signal ingestion remains abstracted and globally lawful.
+    
+    SEED LIMITS: 10 non-US jurisdictions + 1 United States (maximum 12 non-US)
     """
     store = get_store()
     jurisdictions = store.get_all_jurisdictions()
@@ -514,9 +520,11 @@ async def list_jurisdictions():
         JurisdictionSummary(
             code=j.code,
             name=j.name,
-            region=j.region
+            region=j.region,
+            is_synthetic=j.is_synthetic,
+            is_operational=j.is_operational
         )
-        for j in sorted(jurisdictions, key=lambda x: (x.region, x.name))
+        for j in sorted(jurisdictions, key=lambda x: (not x.is_operational, x.region, x.name))
     ]
     
     return JurisdictionListResponse(
