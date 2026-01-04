@@ -39,6 +39,10 @@ from app.models.schemas import (
     DrillDownPermission,
     DrillDownRequest,
     DrillDownResponse,
+    MultiRegionIntelligence,
+    RegionContextStack,
+    RegionSummary,
+    DecisionContext,
 )
 from app.database.store import get_store
 from app.modules.signal_ingestion import SignalIngestionEngine
@@ -751,3 +755,202 @@ async def drill_down_threat(threat_id: str, request: DrillDownRequest):
             "All data remains abstracted and non-attributive"
         ]
     )
+
+
+class MultiRegionIntelligenceResponse(BaseModel):
+    """Response model for multi-region intelligence"""
+    multi_region_intelligence: Optional[MultiRegionIntelligence]
+    active_region: Optional[RegionContextStack]
+    region_summaries: list[RegionSummary]
+    safety_constraints: list[str]
+
+
+class SetActiveRegionRequest(BaseModel):
+    """Request model for setting active region"""
+    region_id: str
+
+
+class ExpandContextRequest(BaseModel):
+    """Request model for expanding a context"""
+    region_id: str
+    context_id: str
+
+
+@router.get("/regions", response_model=MultiRegionIntelligenceResponse)
+async def get_multi_region_intelligence():
+    """
+    Get Multi-Region Intelligence Container.
+    
+    MULTI-REGION HANDLING RULES:
+    - Internally support multiple regions concurrently
+    - Display only one region's map at a time
+    - Use Regional Context Selector to switch regions
+    - Each region maintains independent context stack
+    - No simultaneous multi-region overlays permitted
+    
+    SAFETY CONSTRAINTS:
+    - No context merging across regions or within regions
+    - No combined escalation language
+    - No 'compound threat' labels
+    - No global surveillance views
+    - No actor attribution or event prediction
+    - Pre-incident, advisory, explainable, auditable, non-investigative
+    """
+    store = get_store()
+    mri = store.get_multi_region_intelligence()
+    active_region = store.get_active_region_stack()
+    region_summaries = store.get_region_summaries()
+    
+    return MultiRegionIntelligenceResponse(
+        multi_region_intelligence=mri,
+        active_region=active_region,
+        region_summaries=region_summaries,
+        safety_constraints=[
+            "No context merging across regions or within regions",
+            "No combined escalation language",
+            "No 'compound threat' labels",
+            "No global surveillance views",
+            "No actor attribution or event prediction",
+            "Pre-incident, advisory, explainable, auditable, non-investigative"
+        ]
+    )
+
+
+@router.get("/regions/summaries", response_model=list[RegionSummary])
+async def get_region_summaries():
+    """
+    Get lightweight summaries of all regions for selector dropdown.
+    
+    Returns region_id, region_name, context_count, highest_intent_stage,
+    overall_confidence, and is_active flag for each region.
+    
+    Use this for the Regional Context Selector UI component.
+    """
+    store = get_store()
+    return store.get_region_summaries()
+
+
+@router.get("/regions/active", response_model=Optional[RegionContextStack])
+async def get_active_region():
+    """
+    Get the currently active region's context stack.
+    
+    RULE: Display only one region at a time.
+    No simultaneous multi-region overlays permitted.
+    
+    Returns the full context stack for the active region including:
+    - All decision contexts (max 8 displayed)
+    - Layered confidence bands
+    - Summarized contexts (if > 8 detected)
+    - Policy notes
+    """
+    store = get_store()
+    return store.get_active_region_stack()
+
+
+@router.post("/regions/active", response_model=Optional[RegionContextStack])
+async def set_active_region(request: SetActiveRegionRequest):
+    """
+    Set the active region for display.
+    
+    RULE: Display only one region at a time.
+    No simultaneous multi-region overlays permitted.
+    
+    This changes which region's context stack and confidence bands
+    are displayed in the Region-as-Context Map.
+    """
+    store = get_store()
+    region_stack = store.set_active_region(request.region_id)
+    
+    if not region_stack:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Region {request.region_id} not found. Use GET /regions/summaries for available regions."
+        )
+    
+    return region_stack
+
+
+@router.get("/regions/{region_id}", response_model=Optional[RegionContextStack])
+async def get_region_stack(region_id: str):
+    """
+    Get a specific region's context stack.
+    
+    Returns the full context stack including:
+    - All decision contexts (max 8 displayed)
+    - Layered confidence bands (Core/Adjacent/Peripheral)
+    - Summarized contexts (if > 8 detected)
+    - Policy notes
+    
+    CONTEXT STACK RULES:
+    - Optimal displayed contexts: 3-5 per region
+    - Hard maximum: 8 contexts per region
+    - Contexts are NEVER automatically merged
+    - No compounded probabilities or combined threat labels
+    """
+    store = get_store()
+    mri = store.get_multi_region_intelligence()
+    
+    if not mri or region_id not in mri.regions:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Region {region_id} not found. Use GET /regions/summaries for available regions."
+        )
+    
+    return mri.regions[region_id]
+
+
+@router.post("/regions/{region_id}/expand", response_model=Optional[DecisionContext])
+async def expand_context(region_id: str, request: ExpandContextRequest):
+    """
+    Expand a specific context within a region.
+    
+    RULE: Only one context expanded at a time per region.
+    Other contexts remain collapsed.
+    
+    This allows detailed view of a single context's:
+    - Signals, Intent stage, Decision pathways
+    - Impact forecasting, Authority-aware recommendations
+    - Confidence score and policy notes
+    """
+    store = get_store()
+    context = store.expand_context(region_id, request.context_id)
+    
+    if not context:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Context {request.context_id} not found in region {region_id}."
+        )
+    
+    return context
+
+
+@router.post("/regions/{region_id}/prioritize", response_model=list[DecisionContext])
+async def prioritize_region_contexts(region_id: str):
+    """
+    Prioritize contexts within a region.
+    
+    PRIORITIZATION BASED ON:
+    - Intent stage (higher stages = higher priority)
+    - Persistence
+    - Decision impact
+    - Confidence
+    
+    RULES:
+    - Optimal displayed: 3-5 contexts
+    - Hard maximum: 8 contexts
+    - If > 8, summarize excess as:
+      "Additional low-confidence contexts detected and summarized (not decision-relevant at this time)."
+    
+    Returns sorted list of contexts with updated priority scores.
+    """
+    store = get_store()
+    contexts = store.prioritize_contexts(region_id)
+    
+    if not contexts:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Region {region_id} not found or has no contexts."
+        )
+    
+    return contexts

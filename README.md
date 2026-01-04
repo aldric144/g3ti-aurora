@@ -107,6 +107,45 @@ aurora/
 - Master disclaimer and policy compliance badges
 - Full audit trail for all recommendations
 
+### Phase 4: Multi-Context Regional Intelligence
+
+#### 1. Context Stack Model
+- Multiple independent decision contexts per region (3-5 optimal, max 8 displayed)
+- Each context has its own signals, intent stage, decision pathways, impact forecasting, and confidence score
+- Contexts are never automatically merged
+- No compounded probabilities or combined threat labels
+- Excess contexts (>8) summarized as "Additional low-confidence contexts detected and summarized"
+
+#### 2. Context Prioritization & Display Rules
+- Prioritization based on intent stage, persistence, decision impact, and confidence
+- Priority scoring formula: (stage_weight * 0.35) + (persistence * 0.25) + (decision_impact * 0.25) + (confidence * 0.15)
+- Only one context expanded at a time in UI
+- Context overlap indicated textually (e.g., "3 active contexts in this region")
+- No automatic escalation across contexts
+
+#### 3. Region-as-Context Map (Layered Confidence Bands)
+- Display only one region at a time (no global map overlays)
+- Layered Region Confidence Bands visualization:
+  - **Core Region**: Solid outline, strongest analytical relevance
+  - **Adjacent Zone**: Dashed outline, moderate relevance
+  - **Peripheral Influence**: Soft/faded boundary, limited relevance
+- Bands represent analytical relevance only, not events, actors, or threats
+- Map remains visually stable across context switches
+
+#### 4. Multi-Region Handling (Safe & Controlled)
+- Internal support for multiple regions concurrently
+- Regional Context Selector for switching between regions
+- Each region maintains its own independent context stack
+- No simultaneous multi-region overlays permitted
+
+#### 5. Safety & Governance Constraints
+- No context merging across or within regions
+- No combined escalation language
+- No "compound threat" labels
+- No global surveillance views
+- No actor attribution or event prediction
+- All outputs remain pre-incident, advisory, explainable, auditable, non-investigative
+
 ## Patent-Critical Features
 
 ### Weak-Signal Convergence Engine
@@ -209,7 +248,15 @@ VITE_API_URL=http://localhost:8000
 
 ## Version History
 
-- **v1.1-decision-advantage** (Current): Complete Phase 1 + Phase 2 + Phase 3 implementation
+- **v1.2-multi-context-regional-intelligence** (Current): Complete Phase 1 + Phase 2 + Phase 3 + Phase 4 implementation
+  - All v1.1 features plus:
+  - Multi-Context Per Region (Context Stack Model with 3-5 optimal, max 8 contexts)
+  - Context Prioritization based on intent stage, persistence, decision impact, confidence
+  - Region-as-Context Map with Layered Confidence Bands (Core/Adjacent/Peripheral)
+  - Multi-Region Handling with Regional Context Selector
+  - Safety & Governance Constraints (no merging, no compound threats, no global views)
+
+- **v1.1-decision-advantage**: Complete Phase 1 + Phase 2 + Phase 3 implementation
   - All v1.0 features plus:
   - Decision Pathway Intelligence (8 advisory pathways)
   - Impact Forecasting (6 system-level impact domains)

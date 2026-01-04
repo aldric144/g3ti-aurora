@@ -1092,3 +1092,241 @@ class DecisionAdvantageLayer(BaseModel):
         ],
         description="Policy compliance confirmation"
     )
+
+
+class ConfidenceBandType(str, Enum):
+    """
+    Layered Region Confidence Band Types for Region-as-Context Map.
+    Represents analytical relevance, not events, actors, or threats.
+    """
+    CORE = "core"
+    ADJACENT = "adjacent"
+    PERIPHERAL = "peripheral"
+
+
+class RegionConfidenceBand(BaseModel):
+    """
+    Individual confidence band for region visualization.
+    
+    POLICY-SAFE: Represents analytical relevance only.
+    No pins, heatmaps, or city-level targeting.
+    """
+    band_type: ConfidenceBandType = Field(..., description="Band classification")
+    region_name: str = Field(..., description="Abstracted region name")
+    relevance_score: float = Field(..., ge=0, le=1, description="Analytical relevance (0-1)")
+    description: str = Field(..., description="Band description")
+    
+    visual_style: str = Field(
+        default="solid",
+        description="Visual style: solid (core), dashed (adjacent), faded (peripheral)"
+    )
+
+
+class LayeredRegionConfidenceBands(BaseModel):
+    """
+    Layered Region Confidence Bands for focused context view.
+    
+    CRITICAL CONSTRAINTS:
+    - Display only one region at a time
+    - No global map with multiple regions visible simultaneously
+    - No pins, no heatmaps, no city-level targeting
+    - Bands represent analytical relevance, not events or actors
+    """
+    region_id: str = Field(..., description="Region identifier")
+    region_name: str = Field(..., description="Primary region name")
+    
+    core_band: RegionConfidenceBand = Field(..., description="Core region - strongest relevance")
+    adjacent_band: Optional[RegionConfidenceBand] = Field(None, description="Adjacent zone - moderate relevance")
+    peripheral_band: Optional[RegionConfidenceBand] = Field(None, description="Peripheral influence - soft boundary")
+    
+    overall_confidence: float = Field(..., ge=0, le=1, description="Overall regional confidence")
+    
+    policy_notes: list[str] = Field(
+        default_factory=lambda: [
+            "Bands represent analytical relevance, not events or actors",
+            "No precise coordinates or map pins",
+            "Single region view only - no global overlays"
+        ],
+        description="Policy compliance notes"
+    )
+
+
+class ContextPriority(str, Enum):
+    """Context priority levels for display ordering"""
+    PRIMARY = "primary"
+    SECONDARY = "secondary"
+    TERTIARY = "tertiary"
+    SUMMARIZED = "summarized"
+
+
+class DecisionContext(BaseModel):
+    """
+    Individual Decision Context within a region.
+    
+    Each context is independent with its own:
+    - Signals, Intent stage, Decision pathways
+    - Impact forecasting, Authority-aware recommendations
+    - Confidence score
+    
+    CRITICAL: Contexts are NEVER automatically merged.
+    No compounded probabilities or combined threat labels.
+    """
+    context_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    context_name: str = Field(..., description="Context identifier/name")
+    context_description: str = Field(..., description="Brief context description")
+    
+    threat_id: str = Field(..., description="Associated threat object ID")
+    
+    intent_stage: IntentStage = Field(..., description="Current intent stage")
+    intent_stage_confidence: float = Field(..., ge=0, le=1, description="Confidence in intent stage")
+    
+    confidence_score: float = Field(..., ge=0, le=1, description="Overall context confidence")
+    persistence_score: float = Field(default=0.5, ge=0, le=1, description="How persistent this context has been")
+    decision_impact_score: float = Field(default=0.5, ge=0, le=1, description="Potential decision impact")
+    
+    priority: ContextPriority = Field(default=ContextPriority.SECONDARY, description="Display priority")
+    priority_score: float = Field(default=0.5, ge=0, le=1, description="Numeric priority for sorting")
+    
+    is_expanded: bool = Field(default=False, description="Whether context is expanded in UI")
+    
+    signal_count: int = Field(default=0, ge=0, description="Number of contributing signals")
+    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    
+    policy_notes: list[str] = Field(
+        default_factory=lambda: [
+            "Context is independent - not merged with other contexts",
+            "No compounded probabilities across contexts",
+            "Pre-incident, non-investigative posture maintained"
+        ],
+        description="Policy compliance notes"
+    )
+
+
+class ContextStackSummary(BaseModel):
+    """
+    Summary of excess contexts when more than 8 are detected.
+    
+    RULE: If more than 8 contexts detected, summarize excess as:
+    "Additional low-confidence contexts detected and summarized (not decision-relevant at this time)."
+    """
+    summarized_count: int = Field(..., ge=0, description="Number of summarized contexts")
+    average_confidence: float = Field(..., ge=0, le=1, description="Average confidence of summarized contexts")
+    summary_note: str = Field(
+        default="Additional low-confidence contexts detected and summarized (not decision-relevant at this time).",
+        description="Standard summary note"
+    )
+
+
+class RegionContextStack(BaseModel):
+    """
+    Context Stack for a single region.
+    
+    CONTEXT STACK RULES:
+    - Optimal displayed contexts: 3-5 per region
+    - Hard maximum: 8 contexts per region
+    - If more than 8 detected, summarize excess
+    - Contexts are NEVER automatically merged
+    - No compounded probabilities or combined threat labels
+    
+    PRIORITIZATION:
+    - Intent stage
+    - Persistence
+    - Decision impact
+    - Confidence
+    """
+    region_id: str = Field(..., description="Region identifier")
+    region_name: str = Field(..., description="Region display name")
+    
+    contexts: list[DecisionContext] = Field(
+        default_factory=list,
+        description="Active decision contexts (max 8 displayed)"
+    )
+    
+    displayed_count: int = Field(default=0, ge=0, le=8, description="Number of displayed contexts")
+    total_count: int = Field(default=0, ge=0, description="Total contexts including summarized")
+    
+    summarized_contexts: Optional[ContextStackSummary] = Field(
+        None, description="Summary of excess contexts if > 8 detected"
+    )
+    
+    expanded_context_id: Optional[str] = Field(
+        None, description="ID of currently expanded context (only one at a time)"
+    )
+    
+    confidence_bands: Optional[LayeredRegionConfidenceBands] = Field(
+        None, description="Layered confidence bands for this region"
+    )
+    
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    
+    policy_notes: list[str] = Field(
+        default_factory=lambda: [
+            "Contexts are independent - never automatically merged",
+            "No compounded probabilities or combined threat labels",
+            "No automatic escalation across contexts",
+            "Only one context expanded at a time"
+        ],
+        description="Policy compliance notes"
+    )
+
+
+class MultiRegionIntelligence(BaseModel):
+    """
+    Multi-Region Intelligence Container.
+    
+    MULTI-REGION HANDLING RULES:
+    - Internally support multiple regions concurrently
+    - Display only one region's map at a time
+    - Use Regional Context Selector to switch regions
+    - Each region maintains independent context stack
+    - No simultaneous multi-region overlays permitted
+    
+    SAFETY CONSTRAINTS:
+    - No context merging across regions
+    - No combined escalation language
+    - No "compound threat" labels
+    - No global surveillance views
+    - No actor attribution or event prediction
+    """
+    regions: dict[str, RegionContextStack] = Field(
+        default_factory=dict,
+        description="Region context stacks keyed by region_id"
+    )
+    
+    active_region_id: Optional[str] = Field(
+        None, description="Currently displayed region (only one at a time)"
+    )
+    
+    total_regions: int = Field(default=0, ge=0, description="Total number of regions")
+    total_contexts: int = Field(default=0, ge=0, description="Total contexts across all regions")
+    
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    
+    master_disclaimer: str = Field(
+        default="Multi-region intelligence displays one region at a time. Contexts within regions are independent and never merged. No global surveillance views, compound threats, or actor attribution.",
+        description="Master disclaimer for multi-region display"
+    )
+    
+    safety_constraints: list[str] = Field(
+        default_factory=lambda: [
+            "No context merging across regions or within regions",
+            "No combined escalation language",
+            "No 'compound threat' labels",
+            "No global surveillance views",
+            "No actor attribution or event prediction",
+            "Pre-incident, advisory, explainable, auditable, non-investigative"
+        ],
+        description="Safety constraints confirmation"
+    )
+
+
+class RegionSummary(BaseModel):
+    """Lightweight region summary for selector dropdown"""
+    region_id: str
+    region_name: str
+    context_count: int = Field(default=0, ge=0)
+    highest_intent_stage: Optional[str] = None
+    overall_confidence: float = Field(default=0.0, ge=0, le=1)
+    is_active: bool = Field(default=False)

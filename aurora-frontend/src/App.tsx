@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, Shield, Activity, FileText, MessageSquare, Clock, Target, Brain, Eye, MapPin, Route, Lock } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, Shield, Activity, FileText, MessageSquare, Clock, Target, Brain, Eye, MapPin, Route, Lock, Layers, ChevronUp, ChevronDown } from 'lucide-react';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -274,6 +274,88 @@ interface JurisdictionListResponse {
   current_jurisdiction: string;
 }
 
+interface RegionConfidenceBand {
+  band_type: string;
+  region_name: string;
+  relevance_score: number;
+  description: string;
+  visual_style: string;
+}
+
+interface LayeredRegionConfidenceBands {
+  region_id: string;
+  region_name: string;
+  core_band: RegionConfidenceBand;
+  adjacent_band: RegionConfidenceBand | null;
+  peripheral_band: RegionConfidenceBand | null;
+  overall_confidence: number;
+  policy_notes: string[];
+}
+
+interface DecisionContext {
+  context_id: string;
+  context_name: string;
+  context_description: string;
+  threat_id: string;
+  intent_stage: string;
+  intent_stage_confidence: number;
+  confidence_score: number;
+  persistence_score: number;
+  decision_impact_score: number;
+  priority: string;
+  priority_score: number;
+  is_expanded: boolean;
+  signal_count: number;
+  created_at: string;
+  last_updated: string;
+  policy_notes: string[];
+}
+
+interface ContextStackSummary {
+  summarized_count: number;
+  average_confidence: number;
+  summary_note: string;
+}
+
+interface RegionContextStack {
+  region_id: string;
+  region_name: string;
+  contexts: DecisionContext[];
+  displayed_count: number;
+  total_count: number;
+  summarized_contexts: ContextStackSummary | null;
+  expanded_context_id: string | null;
+  confidence_bands: LayeredRegionConfidenceBands | null;
+  last_updated: string;
+  policy_notes: string[];
+}
+
+interface RegionSummary {
+  region_id: string;
+  region_name: string;
+  context_count: number;
+  highest_intent_stage: string | null;
+  overall_confidence: number;
+  is_active: boolean;
+}
+
+interface MultiRegionIntelligence {
+  regions: Record<string, RegionContextStack>;
+  active_region_id: string | null;
+  total_regions: number;
+  total_contexts: number;
+  last_updated: string;
+  master_disclaimer: string;
+  safety_constraints: string[];
+}
+
+interface MultiRegionIntelligenceResponse {
+  multi_region_intelligence: MultiRegionIntelligence | null;
+  active_region: RegionContextStack | null;
+  region_summaries: RegionSummary[];
+  safety_constraints: string[];
+}
+
 const STAGE_LABELS: Record<string, string> = {
   grievance_formation: 'Stage 1: Grievance Formation',
   cognitive_fixation: 'Stage 2: Cognitive Fixation',
@@ -386,11 +468,15 @@ function App() {
   const [historyData, setHistoryData] = useState<Array<{ timestamp: string; probability: number }>>([]);
   const [jurisdictions, setJurisdictions] = useState<JurisdictionSummary[]>([]);
   const [currentJurisdiction, setCurrentJurisdiction] = useState<string>('US');
+  const [multiRegionIntelligence, setMultiRegionIntelligence] = useState<MultiRegionIntelligence | null>(null);
+  const [activeRegion, setActiveRegion] = useState<RegionContextStack | null>(null);
+  const [regionSummaries, setRegionSummaries] = useState<RegionSummary[]>([]);
 
   useEffect(() => {
     fetchThreats();
     fetchSystemStatus();
     fetchJurisdictions();
+    fetchMultiRegionIntelligence();
   }, []);
 
   useEffect(() => {
@@ -455,6 +541,62 @@ function App() {
       setCurrentJurisdiction(data.current_jurisdiction);
     } catch (error) {
       console.error('Failed to fetch jurisdictions:', error);
+    }
+  };
+
+  const fetchMultiRegionIntelligence = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/regions`);
+      const data: MultiRegionIntelligenceResponse = await response.json();
+      setMultiRegionIntelligence(data.multi_region_intelligence);
+      setActiveRegion(data.active_region);
+      setRegionSummaries(data.region_summaries);
+    } catch (error) {
+      console.error('Failed to fetch multi-region intelligence:', error);
+    }
+  };
+
+  const handleSetActiveRegion = async (regionId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/regions/active`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ region_id: regionId }),
+      });
+      if (response.ok) {
+        const data: RegionContextStack = await response.json();
+        setActiveRegion(data);
+        setRegionSummaries(prev => prev.map(r => ({
+          ...r,
+          is_active: r.region_id === regionId
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to set active region:', error);
+    }
+  };
+
+  const handleExpandContext = async (regionId: string, contextId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/v1/regions/${regionId}/expand`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ region_id: regionId, context_id: contextId }),
+      });
+      if (response.ok) {
+        if (activeRegion) {
+          setActiveRegion({
+            ...activeRegion,
+            expanded_context_id: contextId,
+            contexts: activeRegion.contexts.map(c => ({
+              ...c,
+              is_expanded: c.context_id === contextId
+            }))
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to expand context:', error);
     }
   };
 
@@ -1558,6 +1700,243 @@ function App() {
                           Region context and escalation pathway data have not been generated for this threat.
                         </AlertDescription>
                       </Alert>
+                    )}
+
+                    {regionSummaries.length > 0 && (
+                      <Card className="bg-[#121C2D] border-[#16233A]">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Layers className="h-5 w-5 text-[#3EC1C9]" />
+                              <CardTitle className="text-lg text-white">Multi-Context Regional Intelligence</CardTitle>
+                            </div>
+                            <Badge variant="outline" className="border-[#3EC1C9]/30 text-[#3EC1C9]">
+                              {regionSummaries.length} Regions • {multiRegionIntelligence?.total_contexts || 0} Contexts
+                            </Badge>
+                          </div>
+                          <CardDescription className="text-[#9FB0C7]">
+                            Independent decision contexts per region — no merging, no compound threats
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="bg-[#16233A] rounded-lg p-4">
+                            <div className="text-xs text-[#9FB0C7] mb-3">Regional Context Selector</div>
+                            <div className="flex flex-wrap gap-2">
+                              {regionSummaries.map((region) => {
+                                const stageColors = region.highest_intent_stage ? 
+                                  INTENT_STAGE_COLORS[region.highest_intent_stage] || INTENT_STAGE_COLORS.grievance_formation : 
+                                  INTENT_STAGE_COLORS.grievance_formation;
+                                return (
+                                  <button
+                                    key={region.region_id}
+                                    onClick={() => handleSetActiveRegion(region.region_id)}
+                                    className={`px-4 py-2 rounded-lg border transition-all ${
+                                      region.is_active 
+                                        ? 'bg-[#3EC1C9]/20 border-[#3EC1C9] text-white' 
+                                        : 'bg-[#0B1220] border-[#16233A] text-[#C9D4E3] hover:border-[#3EC1C9]/50'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div 
+                                        className="w-2 h-2 rounded-full" 
+                                        style={{ backgroundColor: stageColors.accent }}
+                                      />
+                                      <span className="text-sm font-medium">{region.region_name}</span>
+                                      <Badge variant="outline" className="border-[#7A8CA3]/30 text-[#9FB0C7] text-xs">
+                                        {region.context_count} ctx
+                                      </Badge>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {activeRegion && (
+                            <>
+                              {activeRegion.confidence_bands && (
+                                <div className="bg-[#16233A] rounded-lg p-4">
+                                  <div className="text-xs text-[#9FB0C7] mb-3">Layered Region Confidence Bands</div>
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0B1220] border-2 border-solid border-[#3EC1C9]">
+                                      <div className="w-3 h-3 rounded-full bg-[#3EC1C9]" />
+                                      <div className="flex-1">
+                                        <div className="text-sm font-medium text-white">Core Region</div>
+                                        <div className="text-xs text-[#9FB0C7]">{activeRegion.confidence_bands.core_band.region_name}</div>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="text-lg font-bold text-[#3EC1C9]">
+                                          {(activeRegion.confidence_bands.core_band.relevance_score * 100).toFixed(0)}%
+                                        </div>
+                                        <div className="text-xs text-[#9FB0C7]">relevance</div>
+                                      </div>
+                                    </div>
+                                    
+                                    {activeRegion.confidence_bands.adjacent_band && (
+                                      <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0B1220] border-2 border-dashed border-[#F4B400]/60">
+                                        <div className="w-3 h-3 rounded-full bg-[#F4B400]/60" />
+                                        <div className="flex-1">
+                                          <div className="text-sm font-medium text-white">Adjacent Zone</div>
+                                          <div className="text-xs text-[#9FB0C7]">{activeRegion.confidence_bands.adjacent_band.region_name}</div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="text-lg font-bold text-[#F4B400]">
+                                            {(activeRegion.confidence_bands.adjacent_band.relevance_score * 100).toFixed(0)}%
+                                          </div>
+                                          <div className="text-xs text-[#9FB0C7]">relevance</div>
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {activeRegion.confidence_bands.peripheral_band && (
+                                      <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0B1220] border border-[#7A8CA3]/30 opacity-70">
+                                        <div className="w-3 h-3 rounded-full bg-[#7A8CA3]/50" />
+                                        <div className="flex-1">
+                                          <div className="text-sm font-medium text-[#C9D4E3]">Peripheral Influence</div>
+                                          <div className="text-xs text-[#9FB0C7]">{activeRegion.confidence_bands.peripheral_band.region_name}</div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="text-lg font-bold text-[#7A8CA3]">
+                                            {(activeRegion.confidence_bands.peripheral_band.relevance_score * 100).toFixed(0)}%
+                                          </div>
+                                          <div className="text-xs text-[#9FB0C7]">relevance</div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="mt-3 text-xs text-[#9FB0C7] italic">
+                                    Bands represent analytical relevance only — not events, actors, or threats
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="bg-[#16233A] rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="text-xs text-[#9FB0C7]">Context Stack — {activeRegion.region_name}</div>
+                                  <Badge variant="outline" className="border-[#7A8CA3]/30 text-[#9FB0C7] text-xs">
+                                    {activeRegion.displayed_count} displayed / {activeRegion.total_count} total
+                                  </Badge>
+                                </div>
+                                <div className="space-y-2">
+                                  {activeRegion.contexts.map((context) => {
+                                    const stageColors = INTENT_STAGE_COLORS[context.intent_stage] || INTENT_STAGE_COLORS.grievance_formation;
+                                    const isExpanded = context.context_id === activeRegion.expanded_context_id;
+                                    return (
+                                      <div 
+                                        key={context.context_id}
+                                        className={`rounded-lg border transition-all cursor-pointer ${
+                                          isExpanded 
+                                            ? 'bg-[#0B1220] border-l-4' 
+                                            : 'bg-[#0B1220]/50 border-[#16233A] hover:border-[#3EC1C9]/30'
+                                        }`}
+                                        style={isExpanded ? { borderLeftColor: stageColors.accent } : {}}
+                                        onClick={() => handleExpandContext(activeRegion.region_id, context.context_id)}
+                                      >
+                                        <div className="p-3">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              <div 
+                                                className="w-2 h-2 rounded-full" 
+                                                style={{ backgroundColor: stageColors.accent }}
+                                              />
+                                              <span className="text-sm font-medium text-white">{context.context_name}</span>
+                                              <Badge className={`${stageColors.bg} ${stageColors.text} ${stageColors.border} text-xs`}>
+                                                {STAGE_LABELS[context.intent_stage] || context.intent_stage}
+                                              </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                              <div className="text-right">
+                                                <div className="text-sm font-bold text-white">
+                                                  {(context.confidence_score * 100).toFixed(0)}%
+                                                </div>
+                                                <div className="text-xs text-[#9FB0C7]">confidence</div>
+                                              </div>
+                                              {isExpanded ? (
+                                                <ChevronUp className="h-4 w-4 text-[#9FB0C7]" />
+                                              ) : (
+                                                <ChevronDown className="h-4 w-4 text-[#9FB0C7]" />
+                                              )}
+                                            </div>
+                                          </div>
+                                          
+                                          {isExpanded && (
+                                            <div className="mt-4 pt-4 border-t border-[#16233A] space-y-3">
+                                              <p className="text-sm text-[#C9D4E3] leading-6">{context.context_description}</p>
+                                              
+                                              <div className="grid grid-cols-4 gap-3">
+                                                <div className="bg-[#16233A] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Intent Stage</div>
+                                                  <div className="text-sm font-medium" style={{ color: stageColors.accent }}>
+                                                    {(context.intent_stage_confidence * 100).toFixed(0)}%
+                                                  </div>
+                                                </div>
+                                                <div className="bg-[#16233A] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Persistence</div>
+                                                  <div className="text-sm font-medium text-white">
+                                                    {(context.persistence_score * 100).toFixed(0)}%
+                                                  </div>
+                                                </div>
+                                                <div className="bg-[#16233A] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Decision Impact</div>
+                                                  <div className="text-sm font-medium text-white">
+                                                    {(context.decision_impact_score * 100).toFixed(0)}%
+                                                  </div>
+                                                </div>
+                                                <div className="bg-[#16233A] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Signals</div>
+                                                  <div className="text-sm font-medium text-white">
+                                                    {context.signal_count}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              
+                                              <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="border-[#7A8CA3]/30 text-[#9FB0C7] text-xs">
+                                                  Priority: {context.priority}
+                                                </Badge>
+                                                <Badge variant="outline" className="border-[#7A8CA3]/30 text-[#9FB0C7] text-xs">
+                                                  Score: {(context.priority_score * 100).toFixed(0)}%
+                                                </Badge>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                
+                                {activeRegion.summarized_contexts && (
+                                  <Alert className="mt-3 bg-[#0B1220] border-[#7A8CA3]/30">
+                                    <AlertTriangle className="h-4 w-4 text-[#7A8CA3]" />
+                                    <AlertDescription className="text-[#9FB0C7] text-xs">
+                                      {activeRegion.summarized_contexts.summary_note} ({activeRegion.summarized_contexts.summarized_count} contexts, avg confidence: {(activeRegion.summarized_contexts.average_confidence * 100).toFixed(0)}%)
+                                    </AlertDescription>
+                                  </Alert>
+                                )}
+                              </div>
+
+                              <Alert className="bg-[#0B1220] border-[#3EC1C9]/30">
+                                <Lock className="h-4 w-4 text-[#3EC1C9]" />
+                                <AlertTitle className="text-[#3EC1C9] text-sm">Multi-Context Safety Constraints</AlertTitle>
+                                <AlertDescription className="text-[#9FB0C7] text-xs">
+                                  {activeRegion.policy_notes.join(' • ')}
+                                </AlertDescription>
+                              </Alert>
+                            </>
+                          )}
+
+                          {multiRegionIntelligence && (
+                            <Alert className="bg-[#0B1220] border-[#F4B400]/30">
+                              <Shield className="h-4 w-4 text-[#F4B400]" />
+                              <AlertTitle className="text-[#F4B400] text-sm">Master Disclaimer</AlertTitle>
+                              <AlertDescription className="text-[#9FB0C7] text-xs">
+                                {multiRegionIntelligence.master_disclaimer}
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </CardContent>
+                      </Card>
                     )}
                   </TabsContent>
 

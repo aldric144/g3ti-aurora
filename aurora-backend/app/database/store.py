@@ -35,6 +35,15 @@ from app.models.schemas import (
     DecisionPathwayRelevance,
     ImpactDomain,
     AuthorityDomain,
+    ConfidenceBandType,
+    RegionConfidenceBand,
+    LayeredRegionConfidenceBands,
+    ContextPriority,
+    DecisionContext,
+    ContextStackSummary,
+    RegionContextStack,
+    MultiRegionIntelligence,
+    RegionSummary,
 )
 
 
@@ -71,10 +80,13 @@ class InMemoryStore:
         self._probability_history: dict[str, list[dict]] = {}
         self._current_jurisdiction: str = "US"
         
+        self.multi_region_intelligence: Optional[MultiRegionIntelligence] = None
+        
         self._initialized = True
         
         self._seed_jurisdictions()
         self._seed_demo_data()
+        self._seed_multi_region_intelligence()
     
     def _seed_jurisdictions(self):
         """
@@ -1128,6 +1140,382 @@ class InMemoryStore:
             )
             
             return self.jurisdictions[code]
+    
+    def _seed_multi_region_intelligence(self):
+        """
+        Seed multi-region intelligence with demo contexts.
+        
+        CONTEXT STACK RULES:
+        - Optimal displayed contexts: 3-5 per region
+        - Hard maximum: 8 contexts per region
+        - Contexts are NEVER automatically merged
+        - No compounded probabilities or combined threat labels
+        
+        MULTI-REGION HANDLING:
+        - Display only one region at a time
+        - Each region maintains independent context stack
+        - No simultaneous multi-region overlays
+        """
+        
+        threat_ids = list(self.threats.keys())
+        primary_threat_id = threat_ids[0] if threat_ids else str(uuid.uuid4())
+        
+        midwest_core_band = RegionConfidenceBand(
+            band_type=ConfidenceBandType.CORE,
+            region_name="Midwest Industrial Corridor",
+            relevance_score=0.82,
+            description="Core region with strongest signal convergence and analytical relevance",
+            visual_style="solid"
+        )
+        
+        midwest_adjacent_band = RegionConfidenceBand(
+            band_type=ConfidenceBandType.ADJACENT,
+            region_name="Great Lakes Metro-Adjacent",
+            relevance_score=0.58,
+            description="Adjacent zone with moderate signal spillover and contextual relevance",
+            visual_style="dashed"
+        )
+        
+        midwest_peripheral_band = RegionConfidenceBand(
+            band_type=ConfidenceBandType.PERIPHERAL,
+            region_name="Ohio Valley Transition Zone",
+            relevance_score=0.34,
+            description="Peripheral influence zone with soft boundary and limited signal presence",
+            visual_style="faded"
+        )
+        
+        midwest_confidence_bands = LayeredRegionConfidenceBands(
+            region_id="midwest_industrial",
+            region_name="Midwest Industrial Corridor",
+            core_band=midwest_core_band,
+            adjacent_band=midwest_adjacent_band,
+            peripheral_band=midwest_peripheral_band,
+            overall_confidence=0.76
+        )
+        
+        midwest_context_1 = DecisionContext(
+            context_id=str(uuid.uuid4()),
+            context_name="Economic Stress Convergence",
+            context_description="Multiple weak signals converging around economic stress indicators",
+            threat_id=primary_threat_id,
+            intent_stage=IntentStage.COGNITIVE_FIXATION,
+            intent_stage_confidence=0.78,
+            confidence_score=0.73,
+            persistence_score=0.82,
+            decision_impact_score=0.71,
+            priority=ContextPriority.PRIMARY,
+            priority_score=0.85,
+            is_expanded=True,
+            signal_count=5
+        )
+        
+        midwest_context_2 = DecisionContext(
+            context_id=str(uuid.uuid4()),
+            context_name="Labor Market Transition Stress",
+            context_description="Signals related to workforce displacement and retraining gaps",
+            threat_id=primary_threat_id,
+            intent_stage=IntentStage.GRIEVANCE_FORMATION,
+            intent_stage_confidence=0.65,
+            confidence_score=0.58,
+            persistence_score=0.72,
+            decision_impact_score=0.54,
+            priority=ContextPriority.SECONDARY,
+            priority_score=0.62,
+            is_expanded=False,
+            signal_count=3
+        )
+        
+        midwest_context_3 = DecisionContext(
+            context_id=str(uuid.uuid4()),
+            context_name="Community Discourse Amplification",
+            context_description="Increasing public discourse around economic grievances",
+            threat_id=primary_threat_id,
+            intent_stage=IntentStage.GRIEVANCE_FORMATION,
+            intent_stage_confidence=0.58,
+            confidence_score=0.52,
+            persistence_score=0.65,
+            decision_impact_score=0.48,
+            priority=ContextPriority.TERTIARY,
+            priority_score=0.55,
+            is_expanded=False,
+            signal_count=2
+        )
+        
+        midwest_stack = RegionContextStack(
+            region_id="midwest_industrial",
+            region_name="Midwest Industrial Corridor",
+            contexts=[midwest_context_1, midwest_context_2, midwest_context_3],
+            displayed_count=3,
+            total_count=3,
+            summarized_contexts=None,
+            expanded_context_id=midwest_context_1.context_id,
+            confidence_bands=midwest_confidence_bands
+        )
+        
+        northeast_core_band = RegionConfidenceBand(
+            band_type=ConfidenceBandType.CORE,
+            region_name="Northeast Urban Corridor",
+            relevance_score=0.68,
+            description="Core region with urban density signal patterns",
+            visual_style="solid"
+        )
+        
+        northeast_adjacent_band = RegionConfidenceBand(
+            band_type=ConfidenceBandType.ADJACENT,
+            region_name="Mid-Atlantic Transition Zone",
+            relevance_score=0.42,
+            description="Adjacent zone with moderate urban-suburban signal mixing",
+            visual_style="dashed"
+        )
+        
+        northeast_confidence_bands = LayeredRegionConfidenceBands(
+            region_id="northeast_urban",
+            region_name="Northeast Urban Corridor",
+            core_band=northeast_core_band,
+            adjacent_band=northeast_adjacent_band,
+            peripheral_band=None,
+            overall_confidence=0.62
+        )
+        
+        northeast_context_1 = DecisionContext(
+            context_id=str(uuid.uuid4()),
+            context_name="Infrastructure Stress Indicators",
+            context_description="Signals related to aging infrastructure and service disruption concerns",
+            threat_id=primary_threat_id,
+            intent_stage=IntentStage.GRIEVANCE_FORMATION,
+            intent_stage_confidence=0.62,
+            confidence_score=0.58,
+            persistence_score=0.68,
+            decision_impact_score=0.55,
+            priority=ContextPriority.PRIMARY,
+            priority_score=0.68,
+            is_expanded=True,
+            signal_count=4
+        )
+        
+        northeast_context_2 = DecisionContext(
+            context_id=str(uuid.uuid4()),
+            context_name="Housing Affordability Discourse",
+            context_description="Public discourse patterns around housing costs and displacement",
+            threat_id=primary_threat_id,
+            intent_stage=IntentStage.GRIEVANCE_FORMATION,
+            intent_stage_confidence=0.55,
+            confidence_score=0.48,
+            persistence_score=0.58,
+            decision_impact_score=0.45,
+            priority=ContextPriority.SECONDARY,
+            priority_score=0.52,
+            is_expanded=False,
+            signal_count=2
+        )
+        
+        northeast_stack = RegionContextStack(
+            region_id="northeast_urban",
+            region_name="Northeast Urban Corridor",
+            contexts=[northeast_context_1, northeast_context_2],
+            displayed_count=2,
+            total_count=2,
+            summarized_contexts=None,
+            expanded_context_id=northeast_context_1.context_id,
+            confidence_bands=northeast_confidence_bands
+        )
+        
+        self.multi_region_intelligence = MultiRegionIntelligence(
+            regions={
+                "midwest_industrial": midwest_stack,
+                "northeast_urban": northeast_stack
+            },
+            active_region_id="midwest_industrial",
+            total_regions=2,
+            total_contexts=5
+        )
+        
+        self._log_audit(
+            action_type="multi_region_intelligence_seeded",
+            actor="system",
+            target_type="multi_region_intelligence",
+            target_id="all",
+            reasoning="Seeded multi-region intelligence with 2 regions and 5 contexts"
+        )
+    
+    def get_multi_region_intelligence(self) -> Optional[MultiRegionIntelligence]:
+        """Get the multi-region intelligence container"""
+        with self._data_lock:
+            return self.multi_region_intelligence
+    
+    def get_active_region_stack(self) -> Optional[RegionContextStack]:
+        """Get the currently active region's context stack"""
+        with self._data_lock:
+            if not self.multi_region_intelligence:
+                return None
+            active_id = self.multi_region_intelligence.active_region_id
+            if not active_id:
+                return None
+            return self.multi_region_intelligence.regions.get(active_id)
+    
+    def set_active_region(self, region_id: str) -> Optional[RegionContextStack]:
+        """
+        Set the active region for display.
+        
+        RULE: Display only one region at a time.
+        No simultaneous multi-region overlays permitted.
+        """
+        with self._data_lock:
+            if not self.multi_region_intelligence:
+                return None
+            if region_id not in self.multi_region_intelligence.regions:
+                return None
+            
+            old_region = self.multi_region_intelligence.active_region_id
+            self.multi_region_intelligence.active_region_id = region_id
+            self.multi_region_intelligence.last_updated = datetime.utcnow()
+            
+            self._log_audit(
+                action_type="active_region_changed",
+                actor="api",
+                target_type="region",
+                target_id=region_id,
+                reasoning="Active region changed for focused context view",
+                before_state={"region_id": old_region},
+                after_state={"region_id": region_id}
+            )
+            
+            return self.multi_region_intelligence.regions[region_id]
+    
+    def expand_context(self, region_id: str, context_id: str) -> Optional[DecisionContext]:
+        """
+        Expand a specific context within a region.
+        
+        RULE: Only one context expanded at a time per region.
+        """
+        with self._data_lock:
+            if not self.multi_region_intelligence:
+                return None
+            region_stack = self.multi_region_intelligence.regions.get(region_id)
+            if not region_stack:
+                return None
+            
+            expanded_context = None
+            for ctx in region_stack.contexts:
+                if ctx.context_id == context_id:
+                    ctx.is_expanded = True
+                    expanded_context = ctx
+                else:
+                    ctx.is_expanded = False
+            
+            region_stack.expanded_context_id = context_id
+            region_stack.last_updated = datetime.utcnow()
+            
+            self._log_audit(
+                action_type="context_expanded",
+                actor="api",
+                target_type="context",
+                target_id=context_id,
+                reasoning="Context expanded for detailed view (only one at a time)",
+                metadata={"region_id": region_id}
+            )
+            
+            return expanded_context
+    
+    def get_region_summaries(self) -> list[RegionSummary]:
+        """Get lightweight summaries of all regions for selector dropdown"""
+        with self._data_lock:
+            if not self.multi_region_intelligence:
+                return []
+            
+            summaries = []
+            for region_id, stack in self.multi_region_intelligence.regions.items():
+                highest_stage = None
+                max_stage_score = 0
+                stage_order = {
+                    IntentStage.GRIEVANCE_FORMATION: 1,
+                    IntentStage.COGNITIVE_FIXATION: 2,
+                    IntentStage.BEHAVIORAL_ACCELERATION: 3,
+                    IntentStage.MOBILIZATION_RISK: 4
+                }
+                
+                for ctx in stack.contexts:
+                    stage_score = stage_order.get(ctx.intent_stage, 0)
+                    if stage_score > max_stage_score:
+                        max_stage_score = stage_score
+                        highest_stage = ctx.intent_stage.value
+                
+                avg_confidence = sum(ctx.confidence_score for ctx in stack.contexts) / len(stack.contexts) if stack.contexts else 0.0
+                
+                summaries.append(RegionSummary(
+                    region_id=region_id,
+                    region_name=stack.region_name,
+                    context_count=stack.displayed_count,
+                    highest_intent_stage=highest_stage,
+                    overall_confidence=avg_confidence,
+                    is_active=(region_id == self.multi_region_intelligence.active_region_id)
+                ))
+            
+            return summaries
+    
+    def prioritize_contexts(self, region_id: str) -> list[DecisionContext]:
+        """
+        Prioritize contexts within a region based on:
+        - Intent stage (higher stages = higher priority)
+        - Persistence
+        - Decision impact
+        - Confidence
+        
+        RULES:
+        - Optimal displayed: 3-5 contexts
+        - Hard maximum: 8 contexts
+        - If > 8, summarize excess
+        """
+        with self._data_lock:
+            if not self.multi_region_intelligence:
+                return []
+            region_stack = self.multi_region_intelligence.regions.get(region_id)
+            if not region_stack:
+                return []
+            
+            stage_weights = {
+                IntentStage.GRIEVANCE_FORMATION: 0.25,
+                IntentStage.COGNITIVE_FIXATION: 0.50,
+                IntentStage.BEHAVIORAL_ACCELERATION: 0.75,
+                IntentStage.MOBILIZATION_RISK: 1.0
+            }
+            
+            for ctx in region_stack.contexts:
+                stage_weight = stage_weights.get(ctx.intent_stage, 0.25)
+                ctx.priority_score = (
+                    stage_weight * 0.35 +
+                    ctx.persistence_score * 0.25 +
+                    ctx.decision_impact_score * 0.25 +
+                    ctx.confidence_score * 0.15
+                )
+                
+                if ctx.priority_score >= 0.7:
+                    ctx.priority = ContextPriority.PRIMARY
+                elif ctx.priority_score >= 0.5:
+                    ctx.priority = ContextPriority.SECONDARY
+                else:
+                    ctx.priority = ContextPriority.TERTIARY
+            
+            sorted_contexts = sorted(region_stack.contexts, key=lambda x: x.priority_score, reverse=True)
+            
+            if len(sorted_contexts) > 8:
+                displayed = sorted_contexts[:8]
+                excess = sorted_contexts[8:]
+                avg_confidence = sum(ctx.confidence_score for ctx in excess) / len(excess)
+                region_stack.summarized_contexts = ContextStackSummary(
+                    summarized_count=len(excess),
+                    average_confidence=avg_confidence
+                )
+                region_stack.contexts = displayed
+                region_stack.displayed_count = 8
+            else:
+                region_stack.contexts = sorted_contexts
+                region_stack.displayed_count = len(sorted_contexts)
+                region_stack.summarized_contexts = None
+            
+            region_stack.last_updated = datetime.utcnow()
+            
+            return region_stack.contexts
 
 
 _store_instance: Optional[InMemoryStore] = None
