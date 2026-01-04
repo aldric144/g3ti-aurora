@@ -50,12 +50,21 @@ from app.models.schemas import (
     ExplainabilityPanel,
     SilentAuditEntry,
     DRL_DESCRIPTIONS,
+    LiveDataMode,
+    LiveDataGovernanceMode,
+    InputValidationResult,
+    DataFreshnessIndicator,
+    LiveDataFailSafeControls,
+    ContextProvenance,
+    LiveDataGovernanceLayer,
+    FailSafeActivation,
 )
 from app.database.store import get_store
 from app.modules.signal_ingestion import SignalIngestionEngine
 from app.modules.correlation import ConvergenceEngine
 from app.modules.intent_modeling import IntentGradientEngine
 from app.modules.narrative_generation import NarrativeEngine
+from app.modules.live_data_governance import LiveDataGovernanceEngine
 
 
 router = APIRouter()
@@ -1177,3 +1186,274 @@ async def get_drl_definitions():
         "drl_3": DRL_DESCRIPTIONS[DecisionReadinessLevel.DRL_3],
         "disclaimer": "Decision Readiness Levels are advisory framing only. They are NOT threat levels and do not mandate any specific action."
     }
+
+
+# =============================================================================
+# LIVE DATA GOVERNANCE - Phase 1.4
+# =============================================================================
+
+live_data_governance_engine = LiveDataGovernanceEngine()
+
+
+class SetLiveDataModeRequest(BaseModel):
+    """Request to set live data mode"""
+    mode: str
+    set_by: str = "user"
+
+
+class ValidateInputRequest(BaseModel):
+    """Request to validate input against governance rules"""
+    content: str
+    jurisdiction: str
+    metadata: Optional[dict] = None
+
+
+class LiveDataGovernanceResponse(BaseModel):
+    """Response for live data governance layer"""
+    governance_mode: LiveDataGovernanceMode
+    data_freshness: Optional[DataFreshnessIndicator] = None
+    fail_safe_controls: LiveDataFailSafeControls
+    context_provenance: Optional[ContextProvenance] = None
+    governance_status: str
+    safety_rules_enforced: list[str]
+    master_disclaimer: str
+
+
+@router.get("/governance/live-data", response_model=LiveDataGovernanceResponse)
+async def get_live_data_governance(
+    context_id: Optional[str] = Query(None, description="Context ID for freshness and provenance")
+):
+    """
+    Get Live Data Governance Layer status.
+    
+    Returns all four governance layers:
+    1. Live Data Governance Mode (Policy Enforcement)
+    2. Data Freshness & Time Semantics
+    3. Live-Data Fail-Safe & Dampening Controls
+    4. Provenance & Context Attribution
+    
+    GLOBAL SAFETY RULES (NON-NEGOTIABLE):
+    - No alerts
+    - No event detection
+    - No actor modeling
+    - No individual or population surveillance
+    - No public-facing live feeds
+    - U.S. context only (global synthetic remains unchanged)
+    """
+    store = get_store()
+    
+    last_data_update = None
+    signal_persistence_hours = 0
+    signals = None
+    domain_weights = None
+    
+    if context_id:
+        contexts = store.get_decision_contexts()
+        for ctx in contexts:
+            if ctx.context_id == context_id:
+                last_data_update = ctx.last_updated
+                signal_persistence_hours = 24.0
+                break
+        
+        threats = store.get_all_threats()
+        if threats:
+            threat = threats[0]
+            signals = [
+                {"domain": s.domain.value, "weight": s.weight}
+                for s in threat.signals
+            ]
+            domain_weights = {
+                "social_discourse": 0.4,
+                "behavioral_trend": 0.3,
+                "environmental_stressor": 0.3
+            }
+    
+    governance_layer = live_data_governance_engine.get_governance_layer(
+        context_id=context_id or "default",
+        last_data_update=last_data_update,
+        signal_persistence_hours=signal_persistence_hours,
+        signals=signals,
+        domain_weights=domain_weights
+    )
+    
+    return LiveDataGovernanceResponse(
+        governance_mode=governance_layer.governance_mode,
+        data_freshness=governance_layer.data_freshness,
+        fail_safe_controls=governance_layer.fail_safe_controls,
+        context_provenance=governance_layer.context_provenance,
+        governance_status=governance_layer.governance_status,
+        safety_rules_enforced=governance_layer.safety_rules_enforced,
+        master_disclaimer=governance_layer.master_disclaimer
+    )
+
+
+@router.get("/governance/mode", response_model=LiveDataGovernanceMode)
+async def get_governance_mode():
+    """
+    Get current Live Data Governance Mode.
+    
+    Modes:
+    - OFF: Demo / static / synthetic inputs only
+    - ON_US_ONLY: Live contextual indicators permitted under constraints (U.S. only)
+    """
+    return live_data_governance_engine.governance_mode
+
+
+@router.post("/governance/mode", response_model=LiveDataGovernanceMode)
+async def set_governance_mode(request: SetLiveDataModeRequest):
+    """
+    Set Live Data Governance Mode.
+    
+    REQUIREMENTS:
+    - Mode changes are explicitly logged
+    - When ON: Only U.S. context permitted
+    - All prohibited inputs auto-rejected at ingestion
+    """
+    mode = LiveDataMode.OFF
+    if request.mode.lower() == "on_us_only" or request.mode.lower() == "on":
+        mode = LiveDataMode.ON_US_ONLY
+    
+    return live_data_governance_engine.set_live_data_mode(mode, request.set_by)
+
+
+@router.post("/governance/validate-input", response_model=InputValidationResult)
+async def validate_input(request: ValidateInputRequest):
+    """
+    Validate input against Live Data Governance rules.
+    
+    ENFORCEMENT AT INGESTION - not post-analysis.
+    
+    When Live Data Mode is ON:
+    - Only allow permitted input categories:
+      - Structural / Economic
+      - Abstracted Discourse (topic-level only)
+      - Institutional / Policy indicators
+    
+    AUTOMATICALLY REJECTED:
+    - Individual identifiers
+    - Precise geolocation (below regional level)
+    - Actor-level or event-level observation
+    - Alerting semantics
+    - Non-U.S. context
+    """
+    return live_data_governance_engine.validate_input(
+        content=request.content,
+        jurisdiction=request.jurisdiction,
+        metadata=request.metadata
+    )
+
+
+@router.get("/governance/freshness/{context_id}", response_model=DataFreshnessIndicator)
+async def get_data_freshness(context_id: str):
+    """
+    Get Data Freshness indicator for a context.
+    
+    Data freshness bands:
+    - Fresh: Updated < 6 hours
+    - Recent: Updated 6-24 hours
+    - Aging: Updated > 24 hours
+    
+    Context persistence states:
+    - Fresh, Persistent, Cooling, Decaying, Stale
+    
+    RULES:
+    - No expectation of instant change
+    - Intent stages may only advance based on persistence over time
+    """
+    store = get_store()
+    contexts = store.get_decision_contexts()
+    
+    last_update = datetime.utcnow()
+    persistence_hours = 24.0
+    
+    for ctx in contexts:
+        if ctx.context_id == context_id:
+            last_update = ctx.last_updated
+            break
+    
+    return live_data_governance_engine.calculate_data_freshness(
+        context_id=context_id,
+        last_data_update=last_update,
+        signal_persistence_hours=persistence_hours
+    )
+
+
+@router.get("/governance/fail-safes", response_model=LiveDataFailSafeControls)
+async def get_fail_safe_controls():
+    """
+    Get Live-Data Fail-Safe & Dampening Controls status.
+    
+    REQUIRED CONTROLS:
+    - Velocity dampening: Cap rate of probability change per time window
+    - Domain balance enforcement: No single domain may dominate without cross-domain confirmation
+    - Escalation ceilings: Intent stages cannot advance more than one level per time window
+    - Confidence collapse handling: Soften outputs, don't escalate
+    
+    All fail-safe activations logged for audit purposes.
+    """
+    return live_data_governance_engine.fail_safe_controls
+
+
+@router.get("/governance/fail-safes/activations", response_model=list[FailSafeActivation])
+async def get_fail_safe_activations(limit: int = Query(default=10, le=100)):
+    """
+    Get recent fail-safe activations.
+    
+    All fail-safe activations are logged for audit purposes.
+    """
+    activations = live_data_governance_engine.fail_safe_controls.recent_activations
+    return activations[-limit:]
+
+
+@router.get("/governance/provenance/{context_id}", response_model=ContextProvenance)
+async def get_context_provenance(context_id: str):
+    """
+    Get Provenance & Context Attribution for a context.
+    
+    PURPOSE: Explanation, not traceability.
+    Does NOT expose raw sources, feeds, or platforms.
+    
+    EXAMPLES:
+    - "Context primarily driven by structural indicators"
+    - "Discourse-weighted context"
+    - "Institutional policy-influenced context"
+    
+    Visible in:
+    - "Why This Is Shown" panels
+    - Audit logs
+    """
+    store = get_store()
+    threats = store.get_all_threats()
+    
+    signals = []
+    domain_weights = {
+        "social_discourse": 0.4,
+        "behavioral_trend": 0.3,
+        "environmental_stressor": 0.3
+    }
+    
+    if threats:
+        threat = threats[0]
+        signals = [
+            {"domain": s.domain.value, "weight": s.weight}
+            for s in threat.signals
+        ]
+    
+    return live_data_governance_engine.calculate_provenance(
+        context_id=context_id,
+        signals=signals,
+        domain_weights=domain_weights
+    )
+
+
+@router.get("/governance/audit-log", response_model=list[SilentAuditEntry])
+async def get_governance_audit_log(limit: int = Query(default=100, le=1000)):
+    """
+    Get Live Data Governance audit log entries.
+    
+    All governance decisions are logged for audit purposes:
+    - Mode changes
+    - Input validations (accepted/rejected/quarantined)
+    - Fail-safe activations
+    """
+    return live_data_governance_engine.get_audit_log(limit)

@@ -438,6 +438,106 @@ interface DecisionDisciplineResponse {
   governance_compliance: string[];
 }
 
+interface LiveDataGovernanceMode {
+  mode: string;
+  mode_set_at: string;
+  mode_set_by: string;
+  allowed_categories: string[];
+  jurisdiction_restriction: string;
+  rejection_count: number;
+  quarantine_count: number;
+  last_rejection_reason: string | null;
+  audit_logged: boolean;
+  governance_active: boolean;
+}
+
+interface DataFreshnessIndicator {
+  context_id: string;
+  freshness_band: string;
+  persistence_state: string;
+  last_data_update: string;
+  hours_since_update: number;
+  freshness_label: string;
+  persistence_label: string;
+  can_advance_intent_stage: boolean;
+  minimum_persistence_hours: number;
+  freshness_note: string;
+}
+
+interface VelocityDampeningConfig {
+  max_probability_change_per_hour: number;
+  max_probability_change_per_day: number;
+  dampening_active: boolean;
+}
+
+interface DomainBalanceConfig {
+  min_domains_for_conclusion: number;
+  max_single_domain_weight: number;
+  cross_domain_required: boolean;
+}
+
+interface EscalationCeilingConfig {
+  max_stage_advance_per_window: number;
+  time_window_hours: number;
+  ceiling_active: boolean;
+}
+
+interface ConfidenceCollapseConfig {
+  collapse_threshold: number;
+  softening_factor: number;
+  prevent_escalation_on_collapse: boolean;
+}
+
+interface FailSafeActivation {
+  activation_id: string;
+  fail_safe_type: string;
+  activated_at: string;
+  context_id: string | null;
+  threat_id: string | null;
+  trigger_value: number;
+  threshold_value: number;
+  action_taken: string;
+  original_value: number | null;
+  adjusted_value: number | null;
+  audit_logged: boolean;
+}
+
+interface LiveDataFailSafeControls {
+  velocity_dampening: VelocityDampeningConfig;
+  domain_balance: DomainBalanceConfig;
+  escalation_ceiling: EscalationCeilingConfig;
+  confidence_collapse: ConfidenceCollapseConfig;
+  recent_activations: FailSafeActivation[];
+  total_activations_count: number;
+  controls_active: boolean;
+  last_evaluation: string;
+}
+
+interface ContextProvenance {
+  context_id: string;
+  primary_provenance: string;
+  secondary_provenance: string | null;
+  provenance_weights: Record<string, number>;
+  provenance_label: string;
+  provenance_description: string;
+  indicator_types_present: string[];
+  source_diversity_score: number;
+  temporal_coverage: string;
+  geographic_scope: string;
+  audit_visible: boolean;
+  explainability_visible: boolean;
+}
+
+interface LiveDataGovernanceResponse {
+  governance_mode: LiveDataGovernanceMode;
+  data_freshness: DataFreshnessIndicator | null;
+  fail_safe_controls: LiveDataFailSafeControls;
+  context_provenance: ContextProvenance | null;
+  governance_status: string;
+  safety_rules_enforced: string[];
+  master_disclaimer: string;
+}
+
 const STAGE_LABELS: Record<string, string> = {
   grievance_formation: 'Stage 1: Grievance Formation',
   cognitive_fixation: 'Stage 2: Cognitive Fixation',
@@ -553,15 +653,17 @@ function App() {
   const [multiRegionIntelligence, setMultiRegionIntelligence] = useState<MultiRegionIntelligence | null>(null);
   const [activeRegion, setActiveRegion] = useState<RegionContextStack | null>(null);
   const [regionSummaries, setRegionSummaries] = useState<RegionSummary[]>([]);
-  const [decisionDiscipline, setDecisionDiscipline] = useState<DecisionDisciplineResponse | null>(null);
-  const [expandedExplainability, setExpandedExplainability] = useState<string | null>(null);
+    const [decisionDiscipline, setDecisionDiscipline] = useState<DecisionDisciplineResponse | null>(null);
+    const [expandedExplainability, setExpandedExplainability] = useState<string | null>(null);
+    const [liveDataGovernance, setLiveDataGovernance] = useState<LiveDataGovernanceResponse | null>(null);
 
-  useEffect(() => {
-    fetchThreats();
-    fetchSystemStatus();
-    fetchJurisdictions();
-    fetchMultiRegionIntelligence();
-  }, []);
+    useEffect(() => {
+      fetchThreats();
+      fetchSystemStatus();
+      fetchJurisdictions();
+      fetchMultiRegionIntelligence();
+      fetchLiveDataGovernance();
+    }, []);
 
   useEffect(() => {
     if (selectedThreat) {
@@ -641,17 +743,30 @@ function App() {
     }
   };
 
-  const fetchDecisionDiscipline = async (threatId: string) => {
-    try {
-      const response = await fetch(`${API_URL}/api/v1/decision-discipline/${threatId}`);
-      const data: DecisionDisciplineResponse = await response.json();
-      setDecisionDiscipline(data);
-    } catch (error) {
-      console.error('Failed to fetch decision discipline:', error);
-    }
-  };
+    const fetchDecisionDiscipline = async (threatId: string) => {
+      try {
+        const response = await fetch(`${API_URL}/api/v1/decision-discipline/${threatId}`);
+        const data: DecisionDisciplineResponse = await response.json();
+        setDecisionDiscipline(data);
+      } catch (error) {
+        console.error('Failed to fetch decision discipline:', error);
+      }
+    };
 
-  const handleSetActiveRegion = async (regionId: string) => {
+    const fetchLiveDataGovernance = async (contextId?: string) => {
+      try {
+        const url = contextId 
+          ? `${API_URL}/api/v1/governance/live-data?context_id=${contextId}`
+          : `${API_URL}/api/v1/governance/live-data`;
+        const response = await fetch(url);
+        const data: LiveDataGovernanceResponse = await response.json();
+        setLiveDataGovernance(data);
+      } catch (error) {
+        console.error('Failed to fetch live data governance:', error);
+      }
+    };
+
+    const handleSetActiveRegion = async (regionId: string) => {
     try {
       const response = await fetch(`${API_URL}/api/v1/regions/active`, {
         method: 'POST',
@@ -2345,22 +2460,262 @@ function App() {
                             </>
                           )}
 
-                          {decisionDiscipline.governance_compliance && decisionDiscipline.governance_compliance.length > 0 && (
-                            <div className="bg-[#16233A] rounded-lg p-4">
-                              <div className="text-xs text-[#9FB0C7] mb-3">Governance Compliance</div>
-                              <div className="flex flex-wrap gap-2">
-                                {decisionDiscipline.governance_compliance.map((item, idx) => (
-                                  <Badge key={idx} variant="outline" className="border-[#3EC1C9]/30 text-[#3EC1C9] text-xs">
-                                    {item}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    )}
-                  </TabsContent>
+                                            {decisionDiscipline.governance_compliance && decisionDiscipline.governance_compliance.length > 0 && (
+                                              <div className="bg-[#16233A] rounded-lg p-4">
+                                                <div className="text-xs text-[#9FB0C7] mb-3">Governance Compliance</div>
+                                                <div className="flex flex-wrap gap-2">
+                                                  {decisionDiscipline.governance_compliance.map((item, idx) => (
+                                                    <Badge key={idx} variant="outline" className="border-[#3EC1C9]/30 text-[#3EC1C9] text-xs">
+                                                      {item}
+                                                    </Badge>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </CardContent>
+                                        </Card>
+                                      )}
+
+                                      {liveDataGovernance && (
+                                        <Card className="bg-[#121C2D] border-[#16233A]">
+                                          <CardHeader>
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-2">
+                                                <Lock className="h-5 w-5 text-[#3EC1C9]" />
+                                                <CardTitle className="text-lg text-white">Live Data Governance</CardTitle>
+                                              </div>
+                                              <Badge 
+                                                variant="outline" 
+                                                className={`${
+                                                  liveDataGovernance.governance_mode.mode === 'off' 
+                                                    ? 'border-[#7A8CA3]/50 text-[#7A8CA3]' 
+                                                    : 'border-[#3EC1C9]/50 text-[#3EC1C9]'
+                                                }`}
+                                              >
+                                                {liveDataGovernance.governance_mode.mode === 'off' ? 'DEMO MODE' : 'LIVE (US ONLY)'}
+                                              </Badge>
+                                            </div>
+                                            <CardDescription className="text-[#9FB0C7]">
+                                              Policy enforcement, data freshness, fail-safes, and provenance attribution
+                                            </CardDescription>
+                                          </CardHeader>
+                                          <CardContent className="space-y-4">
+                                            <div className="bg-[#16233A] rounded-lg p-4">
+                                              <div className="flex items-center justify-between mb-3">
+                                                <div className="text-xs text-[#9FB0C7]">Governance Mode</div>
+                                                <Badge 
+                                                  variant="outline" 
+                                                  className={`${
+                                                    liveDataGovernance.governance_mode.governance_active 
+                                                      ? 'border-[#3EC1C9]/50 text-[#3EC1C9]' 
+                                                      : 'border-[#7A8CA3]/50 text-[#7A8CA3]'
+                                                  }`}
+                                                >
+                                                  {liveDataGovernance.governance_status.toUpperCase()}
+                                                </Badge>
+                                              </div>
+                            
+                                              <div className="grid grid-cols-3 gap-3 mb-4">
+                                                <div className="bg-[#0B1220] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Jurisdiction</div>
+                                                  <div className="text-sm font-medium text-white">
+                                                    {liveDataGovernance.governance_mode.jurisdiction_restriction}
+                                                  </div>
+                                                </div>
+                                                <div className="bg-[#0B1220] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Rejections</div>
+                                                  <div className="text-sm font-medium text-white">
+                                                    {liveDataGovernance.governance_mode.rejection_count}
+                                                  </div>
+                                                </div>
+                                                <div className="bg-[#0B1220] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Quarantined</div>
+                                                  <div className="text-sm font-medium text-white">
+                                                    {liveDataGovernance.governance_mode.quarantine_count}
+                                                  </div>
+                                                </div>
+                                              </div>
+
+                                              <div className="text-xs text-[#9FB0C7] mb-2">Allowed Input Categories</div>
+                                              <div className="flex flex-wrap gap-2">
+                                                {liveDataGovernance.governance_mode.allowed_categories.map((cat, idx) => (
+                                                  <Badge key={idx} variant="outline" className="border-[#4F81BD]/30 text-[#4F81BD] text-xs">
+                                                    {cat.replace(/_/g, ' ')}
+                                                  </Badge>
+                                                ))}
+                                              </div>
+                                            </div>
+
+                                            {liveDataGovernance.data_freshness && (
+                                              <div className="bg-[#16233A] rounded-lg p-4">
+                                                <div className="flex items-center justify-between mb-3">
+                                                  <div className="text-xs text-[#9FB0C7]">Data Freshness</div>
+                                                  <Badge 
+                                                    variant="outline" 
+                                                    className={`${
+                                                      liveDataGovernance.data_freshness.freshness_band === 'fresh' 
+                                                        ? 'border-[#3EC1C9]/50 text-[#3EC1C9]' 
+                                                        : liveDataGovernance.data_freshness.freshness_band === 'recent'
+                                                        ? 'border-[#4F81BD]/50 text-[#4F81BD]'
+                                                        : 'border-[#F4B400]/50 text-[#F4B400]'
+                                                    }`}
+                                                  >
+                                                    {liveDataGovernance.data_freshness.freshness_band.toUpperCase()}
+                                                  </Badge>
+                                                </div>
+                              
+                                                <p className="text-sm text-[#C9D4E3] leading-relaxed mb-3">
+                                                  {liveDataGovernance.data_freshness.freshness_label}
+                                                </p>
+
+                                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                                  <div className="bg-[#0B1220] rounded p-2">
+                                                    <div className="text-xs text-[#9FB0C7]">Persistence State</div>
+                                                    <div className="text-sm font-medium text-white">
+                                                      {liveDataGovernance.data_freshness.persistence_state.replace(/_/g, ' ')}
+                                                    </div>
+                                                  </div>
+                                                  <div className="bg-[#0B1220] rounded p-2">
+                                                    <div className="text-xs text-[#9FB0C7]">Can Advance Stage</div>
+                                                    <div className={`text-sm font-medium ${
+                                                      liveDataGovernance.data_freshness.can_advance_intent_stage 
+                                                        ? 'text-[#3EC1C9]' 
+                                                        : 'text-[#F4B400]'
+                                                    }`}>
+                                                      {liveDataGovernance.data_freshness.can_advance_intent_stage ? 'Yes' : 'No'}
+                                                    </div>
+                                                  </div>
+                                                </div>
+
+                                                <p className="text-xs text-[#9FB0C7] italic">
+                                                  {liveDataGovernance.data_freshness.freshness_note}
+                                                </p>
+                                              </div>
+                                            )}
+
+                                            <div className="bg-[#16233A] rounded-lg p-4">
+                                              <div className="flex items-center justify-between mb-3">
+                                                <div className="text-xs text-[#9FB0C7]">Fail-Safe Controls</div>
+                                                <Badge 
+                                                  variant="outline" 
+                                                  className={`${
+                                                    liveDataGovernance.fail_safe_controls.controls_active 
+                                                      ? 'border-[#3EC1C9]/50 text-[#3EC1C9]' 
+                                                      : 'border-[#7A8CA3]/50 text-[#7A8CA3]'
+                                                  }`}
+                                                >
+                                                  {liveDataGovernance.fail_safe_controls.controls_active ? 'ACTIVE' : 'INACTIVE'}
+                                                </Badge>
+                                              </div>
+                            
+                                              <div className="grid grid-cols-2 gap-3 mb-3">
+                                                <div className="bg-[#0B1220] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Velocity Dampening</div>
+                                                  <div className="text-sm font-medium text-white">
+                                                    Max {liveDataGovernance.fail_safe_controls.velocity_dampening.max_probability_change_per_hour}%/hr
+                                                  </div>
+                                                </div>
+                                                <div className="bg-[#0B1220] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Domain Balance</div>
+                                                  <div className="text-sm font-medium text-white">
+                                                    Min {liveDataGovernance.fail_safe_controls.domain_balance.min_domains_for_conclusion} domains
+                                                  </div>
+                                                </div>
+                                                <div className="bg-[#0B1220] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Escalation Ceiling</div>
+                                                  <div className="text-sm font-medium text-white">
+                                                    Max {liveDataGovernance.fail_safe_controls.escalation_ceiling.max_stage_advance_per_window} stage/{liveDataGovernance.fail_safe_controls.escalation_ceiling.time_window_hours}hr
+                                                  </div>
+                                                </div>
+                                                <div className="bg-[#0B1220] rounded p-2">
+                                                  <div className="text-xs text-[#9FB0C7]">Total Activations</div>
+                                                  <div className="text-sm font-medium text-white">
+                                                    {liveDataGovernance.fail_safe_controls.total_activations_count}
+                                                  </div>
+                                                </div>
+                                              </div>
+
+                                              {liveDataGovernance.fail_safe_controls.recent_activations.length > 0 && (
+                                                <div>
+                                                  <div className="text-xs text-[#9FB0C7] mb-2">Recent Activations</div>
+                                                  <div className="space-y-1">
+                                                    {liveDataGovernance.fail_safe_controls.recent_activations.slice(0, 3).map((activation, idx) => (
+                                                      <div key={idx} className="flex items-start gap-2 text-sm">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#F4B400] mt-1.5 flex-shrink-0" />
+                                                        <span className="text-[#C9D4E3]">{activation.action_taken}</span>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+
+                                            {liveDataGovernance.context_provenance && (
+                                              <div className="bg-[#16233A] rounded-lg p-4">
+                                                <div className="text-xs text-[#9FB0C7] mb-3">Context Provenance</div>
+                              
+                                                <div className="flex items-center gap-3 mb-3">
+                                                  <div className="text-sm font-medium text-white">
+                                                    {liveDataGovernance.context_provenance.provenance_label}
+                                                  </div>
+                                                </div>
+
+                                                <p className="text-sm text-[#C9D4E3] leading-relaxed mb-3">
+                                                  {liveDataGovernance.context_provenance.provenance_description}
+                                                </p>
+
+                                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                                  <div className="bg-[#0B1220] rounded p-2">
+                                                    <div className="text-xs text-[#9FB0C7]">Source Diversity</div>
+                                                    <div className="text-sm font-medium text-white">
+                                                      {(liveDataGovernance.context_provenance.source_diversity_score * 100).toFixed(0)}%
+                                                    </div>
+                                                  </div>
+                                                  <div className="bg-[#0B1220] rounded p-2">
+                                                    <div className="text-xs text-[#9FB0C7]">Geographic Scope</div>
+                                                    <div className="text-sm font-medium text-white">
+                                                      {liveDataGovernance.context_provenance.geographic_scope}
+                                                    </div>
+                                                  </div>
+                                                </div>
+
+                                                {liveDataGovernance.context_provenance.indicator_types_present.length > 0 && (
+                                                  <div>
+                                                    <div className="text-xs text-[#9FB0C7] mb-2">Indicator Types Present</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                      {liveDataGovernance.context_provenance.indicator_types_present.map((type, idx) => (
+                                                        <Badge key={idx} variant="outline" className="border-[#4F81BD]/30 text-[#4F81BD] text-xs">
+                                                          {type}
+                                                        </Badge>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )}
+
+                                            <div className="bg-[#16233A] rounded-lg p-4">
+                                              <div className="text-xs text-[#9FB0C7] mb-3">Safety Rules Enforced</div>
+                                              <div className="flex flex-wrap gap-2">
+                                                {liveDataGovernance.safety_rules_enforced.map((rule, idx) => (
+                                                  <Badge key={idx} variant="outline" className="border-[#3EC1C9]/30 text-[#3EC1C9] text-xs">
+                                                    {rule}
+                                                  </Badge>
+                                                ))}
+                                              </div>
+                                            </div>
+
+                                            <Alert className="bg-[#0B1220] border-[#F4B400]/30">
+                                              <Lock className="h-4 w-4 text-[#F4B400]" />
+                                              <AlertTitle className="text-[#F4B400] text-sm">Governance Disclaimer</AlertTitle>
+                                              <AlertDescription className="text-[#9FB0C7] text-xs">
+                                                {liveDataGovernance.master_disclaimer}
+                                              </AlertDescription>
+                                            </Alert>
+                                          </CardContent>
+                                        </Card>
+                                      )}
+                                    </TabsContent>
 
                   <TabsContent value="signals" className="space-y-4">
                     <Card className="bg-[#121C2D] border-[#16233A]">

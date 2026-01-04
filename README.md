@@ -191,6 +191,62 @@ aurora/
 - No actor attribution or event prediction
 - All outputs remain pre-incident, advisory, explainable, auditable, non-investigative
 
+### Phase 1.4: Live Data Governance
+
+Prepares AURORA for internal live U.S. data ingestion while maintaining strict pre-incident, non-surveillance, non-alerting posture.
+
+#### 1. Live Data Governance Mode (Policy Enforcement Layer)
+- System-wide Live Data Mode flag with explicit behavior controls
+- Modes: OFF (demo/synthetic only) or ON_US_ONLY (live contextual indicators under constraints)
+- When ON: Only allows permitted input categories:
+  - Structural / Economic indicators
+  - Abstracted Discourse (topic-level only)
+  - Institutional / Policy indicators
+- Automatically rejects or quarantines inputs containing:
+  - Individual identifiers (PII)
+  - Precise geolocation (below regional level)
+  - Actor-level or event-level observation
+  - Alerting semantics
+  - Non-U.S. context
+- Enforcement at ingestion, not post-analysis
+- All mode changes explicitly logged
+
+#### 2. Data Freshness & Time Semantics
+- Time-aware context labeling across system
+- Data freshness bands: Fresh (<6 hours), Recent (6-24 hours), Aging (>24 hours)
+- Context persistence states: Fresh, Persistent, Cooling, Decaying, Stale
+- Rules:
+  - No expectation of instant change
+  - Intent stages may only advance based on persistence over time
+  - Freshness labels displayed where context is summarized (non-intrusive)
+
+#### 3. Live-Data Fail-Safe & Dampening Controls
+- **Velocity Dampening**: Caps rate of probability change per time window
+- **Domain Balance Enforcement**: No single signal domain may dominate without cross-domain confirmation
+- **Escalation Ceilings**: Intent stages cannot advance more than one level within defined time window
+- **Confidence Collapse Handling**: If confidence drops suddenly, system softens outputs rather than escalating
+- All fail-safe activations logged for audit purposes
+
+#### 4. Provenance & Context Attribution (Non-Source Disclosing)
+- Internal context provenance tagging without revealing sources
+- Provenance labels:
+  - "Context primarily driven by structural indicators"
+  - "Discourse-weighted context"
+  - "Institutional policy-influenced context"
+  - "Economic indicator-driven context"
+  - "Behavioral pattern-influenced context"
+- Provenance visible in "Why This Is Shown" panels and audit logs
+- Does NOT expose raw sources, feeds, or platforms
+- Purpose is explanation, not traceability
+
+#### Global Safety Rules (Non-Negotiable)
+- No alerts
+- No event detection
+- No actor modeling
+- No individual or population surveillance
+- No public-facing live feeds
+- U.S. context only (global synthetic remains unchanged)
+
 ## Patent-Critical Features
 
 ### Weak-Signal Convergence Engine
@@ -293,7 +349,16 @@ VITE_API_URL=http://localhost:8000
 
 ## Version History
 
-- **v1.3-decision-discipline** (Current): Complete Phase 1 + Phase 2 + Phase 3 + Phase 3.x + Phase 4 implementation
+- **v1.4-live-data-governance** (Current): Complete Phase 1 + Phase 2 + Phase 3 + Phase 3.x + Phase 4 + Phase 1.4 implementation
+  - All v1.3 features plus:
+  - Live Data Governance Mode (policy enforcement at ingestion)
+  - Data Freshness & Time Semantics (freshness bands, persistence states)
+  - Live-Data Fail-Safe & Dampening Controls (velocity dampening, domain balance, escalation ceilings, confidence collapse handling)
+  - Provenance & Context Attribution (non-source disclosing)
+  - Global Safety Rules enforcement (no alerts, no event detection, no actor modeling, U.S. only)
+  - Full audit logging for all governance decisions
+
+- **v1.3-decision-discipline**: Complete Phase 1 + Phase 2 + Phase 3 + Phase 3.x + Phase 4 implementation
   - All v1.2 features plus:
   - Decision Confidence Gate (gating mechanism for recommendations)
   - Decision Readiness Levels (DRL-0 to DRL-3)

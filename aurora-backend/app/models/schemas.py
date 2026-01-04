@@ -1702,3 +1702,528 @@ class DecisionDisciplineLayer(BaseModel):
         ],
         description="Governance compliance confirmation"
     )
+
+
+# =============================================================================
+# LIVE DATA GOVERNANCE - Phase 1.4
+# =============================================================================
+
+class LiveDataMode(str, Enum):
+    """
+    Live Data Governance Mode - System-wide flag with explicit behavior controls.
+    
+    Modes:
+    - OFF: Demo / static / synthetic inputs only
+    - ON_US_ONLY: Live contextual indicators permitted under constraints (U.S. only)
+    """
+    OFF = "off"
+    ON_US_ONLY = "on_us_only"
+
+
+class AllowedInputCategory(str, Enum):
+    """
+    Categories of inputs allowed when Live Data Mode is ON.
+    
+    Only these categories are permitted:
+    - Structural / Economic indicators
+    - Abstracted Discourse (topic-level only)
+    - Institutional / Policy indicators
+    """
+    STRUCTURAL_ECONOMIC = "structural_economic"
+    ABSTRACTED_DISCOURSE = "abstracted_discourse"
+    INSTITUTIONAL_POLICY = "institutional_policy"
+
+
+class RejectedInputReason(str, Enum):
+    """Reasons for rejecting an input during live data ingestion"""
+    INDIVIDUAL_IDENTIFIER = "individual_identifier"
+    PRECISE_GEOLOCATION = "precise_geolocation"
+    ACTOR_LEVEL_OBSERVATION = "actor_level_observation"
+    EVENT_LEVEL_OBSERVATION = "event_level_observation"
+    ALERTING_SEMANTICS = "alerting_semantics"
+    NON_US_CONTEXT = "non_us_context"
+    UNCATEGORIZED_INPUT = "uncategorized_input"
+
+
+class LiveDataGovernanceMode(BaseModel):
+    """
+    Live Data Governance Mode - Policy Enforcement Layer
+    
+    REQUIREMENTS:
+    - Live Data Mode must be explicitly set and logged
+    - When ON: Only allow permitted input categories
+    - Automatically reject/quarantine prohibited inputs
+    - Enforcement at ingestion, not post-analysis
+    
+    PROHIBITED INPUTS (auto-rejected):
+    - Individual identifiers
+    - Precise geolocation (below regional level)
+    - Actor-level or event-level observation
+    - Alerting semantics
+    """
+    mode: LiveDataMode = Field(
+        default=LiveDataMode.OFF,
+        description="Current live data mode"
+    )
+    
+    mode_set_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        description="When the mode was last set"
+    )
+    
+    mode_set_by: str = Field(
+        default="system",
+        description="Who/what set the mode"
+    )
+    
+    allowed_categories: list[AllowedInputCategory] = Field(
+        default_factory=lambda: [
+            AllowedInputCategory.STRUCTURAL_ECONOMIC,
+            AllowedInputCategory.ABSTRACTED_DISCOURSE,
+            AllowedInputCategory.INSTITUTIONAL_POLICY
+        ],
+        description="Categories of inputs allowed when mode is ON"
+    )
+    
+    jurisdiction_restriction: str = Field(
+        default="US",
+        description="Jurisdiction restriction when mode is ON (US only for live data)"
+    )
+    
+    rejection_count: int = Field(
+        default=0,
+        ge=0,
+        description="Count of rejected inputs since mode was set"
+    )
+    
+    quarantine_count: int = Field(
+        default=0,
+        ge=0,
+        description="Count of quarantined inputs since mode was set"
+    )
+    
+    last_rejection_reason: Optional[RejectedInputReason] = Field(
+        None,
+        description="Reason for last rejected input"
+    )
+    
+    audit_logged: bool = Field(
+        default=True,
+        description="Whether mode changes are logged to audit trail"
+    )
+    
+    governance_active: bool = Field(
+        default=True,
+        description="Whether governance enforcement is active"
+    )
+
+
+class InputValidationResult(BaseModel):
+    """Result of validating an input against live data governance rules"""
+    is_valid: bool = Field(..., description="Whether the input passed validation")
+    input_category: Optional[AllowedInputCategory] = Field(
+        None, description="Categorized input type if valid"
+    )
+    rejection_reason: Optional[RejectedInputReason] = Field(
+        None, description="Reason for rejection if invalid"
+    )
+    rejection_details: Optional[str] = Field(
+        None, description="Detailed explanation of rejection"
+    )
+    quarantined: bool = Field(
+        default=False, description="Whether input was quarantined for review"
+    )
+    validation_timestamp: datetime = Field(default_factory=datetime.utcnow)
+    audit_reference: Optional[str] = Field(
+        None, description="Reference ID for audit trail"
+    )
+
+
+# =============================================================================
+# DATA FRESHNESS & TIME SEMANTICS
+# =============================================================================
+
+class DataFreshnessBand(str, Enum):
+    """
+    Data freshness bands for time-aware context labeling.
+    
+    Prevents "real-time monitoring" expectations.
+    """
+    FRESH = "fresh"           # Updated < 6 hours
+    RECENT = "recent"         # Updated 6-24 hours
+    AGING = "aging"           # Updated > 24 hours
+
+
+class ContextPersistenceState(str, Enum):
+    """
+    Context persistence states for time semantics.
+    
+    Rules:
+    - No expectation of instant change
+    - Intent stages may only advance based on persistence over time
+    """
+    FRESH = "fresh"
+    PERSISTENT = "persistent"
+    COOLING = "cooling"
+    DECAYING = "decaying"
+    STALE = "stale"
+
+
+class DataFreshnessIndicator(BaseModel):
+    """
+    Data Freshness & Time Semantics indicator.
+    
+    PURPOSE:
+    - Prevent "real-time monitoring" expectations
+    - Ensure intent stages advance based on persistence over time
+    - Display freshness labels where context is summarized
+    """
+    context_id: str = Field(..., description="Associated context ID")
+    
+    freshness_band: DataFreshnessBand = Field(
+        ..., description="Current freshness band"
+    )
+    
+    persistence_state: ContextPersistenceState = Field(
+        ..., description="Current persistence state"
+    )
+    
+    last_data_update: datetime = Field(
+        ..., description="Timestamp of last data update"
+    )
+    
+    hours_since_update: float = Field(
+        ..., ge=0, description="Hours since last data update"
+    )
+    
+    freshness_label: str = Field(
+        ..., description="Human-readable freshness label"
+    )
+    
+    persistence_label: str = Field(
+        ..., description="Human-readable persistence label"
+    )
+    
+    can_advance_intent_stage: bool = Field(
+        default=False,
+        description="Whether intent stage can advance based on persistence"
+    )
+    
+    minimum_persistence_hours: float = Field(
+        default=24.0,
+        ge=0,
+        description="Minimum hours of persistence required for intent stage advancement"
+    )
+    
+    freshness_note: str = Field(
+        default="",
+        description="Additional note about data freshness"
+    )
+
+
+# =============================================================================
+# LIVE-DATA FAIL-SAFE & DAMPENING CONTROLS
+# =============================================================================
+
+class FailSafeType(str, Enum):
+    """Types of fail-safe activations"""
+    VELOCITY_DAMPENING = "velocity_dampening"
+    DOMAIN_BALANCE_ENFORCEMENT = "domain_balance_enforcement"
+    ESCALATION_CEILING = "escalation_ceiling"
+    CONFIDENCE_COLLAPSE_HANDLING = "confidence_collapse_handling"
+
+
+class VelocityDampeningConfig(BaseModel):
+    """Configuration for velocity dampening controls"""
+    max_probability_change_per_hour: float = Field(
+        default=5.0, ge=0, le=100,
+        description="Maximum probability change allowed per hour (%)"
+    )
+    max_probability_change_per_day: float = Field(
+        default=15.0, ge=0, le=100,
+        description="Maximum probability change allowed per day (%)"
+    )
+    dampening_active: bool = Field(
+        default=True, description="Whether velocity dampening is active"
+    )
+
+
+class DomainBalanceConfig(BaseModel):
+    """Configuration for domain balance enforcement"""
+    min_domains_for_conclusion: int = Field(
+        default=2, ge=1, le=3,
+        description="Minimum domains required for conclusions"
+    )
+    max_single_domain_weight: float = Field(
+        default=0.6, ge=0, le=1,
+        description="Maximum weight a single domain can have (0-1)"
+    )
+    cross_domain_required: bool = Field(
+        default=True,
+        description="Whether cross-domain confirmation is required"
+    )
+
+
+class EscalationCeilingConfig(BaseModel):
+    """Configuration for escalation ceiling controls"""
+    max_stage_advance_per_window: int = Field(
+        default=1, ge=0, le=3,
+        description="Maximum intent stage advances per time window"
+    )
+    time_window_hours: float = Field(
+        default=24.0, ge=1,
+        description="Time window for escalation ceiling (hours)"
+    )
+    ceiling_active: bool = Field(
+        default=True, description="Whether escalation ceiling is active"
+    )
+
+
+class ConfidenceCollapseConfig(BaseModel):
+    """Configuration for confidence collapse handling"""
+    collapse_threshold: float = Field(
+        default=0.2, ge=0, le=1,
+        description="Threshold for detecting confidence collapse (0-1)"
+    )
+    softening_factor: float = Field(
+        default=0.5, ge=0, le=1,
+        description="Factor to soften outputs during collapse (0-1)"
+    )
+    prevent_escalation_on_collapse: bool = Field(
+        default=True,
+        description="Whether to prevent escalation during confidence collapse"
+    )
+
+
+class FailSafeActivation(BaseModel):
+    """Record of a fail-safe activation"""
+    activation_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    fail_safe_type: FailSafeType = Field(..., description="Type of fail-safe activated")
+    activated_at: datetime = Field(default_factory=datetime.utcnow)
+    context_id: Optional[str] = Field(None, description="Associated context ID")
+    threat_id: Optional[str] = Field(None, description="Associated threat ID")
+    trigger_value: float = Field(..., description="Value that triggered the fail-safe")
+    threshold_value: float = Field(..., description="Threshold that was exceeded")
+    action_taken: str = Field(..., description="Action taken by the fail-safe")
+    original_value: Optional[float] = Field(None, description="Original value before dampening")
+    adjusted_value: Optional[float] = Field(None, description="Adjusted value after dampening")
+    audit_logged: bool = Field(default=True, description="Whether activation was logged")
+
+
+class LiveDataFailSafeControls(BaseModel):
+    """
+    Live-Data Fail-Safe & Dampening Controls
+    
+    Automatic restraint mechanisms for live data volatility.
+    
+    REQUIRED CONTROLS:
+    - Velocity dampening: Cap rate of probability change per time window
+    - Domain balance enforcement: No single domain may dominate without cross-domain confirmation
+    - Escalation ceilings: Intent stages cannot advance more than one level per time window
+    - Confidence collapse handling: Soften outputs, don't escalate
+    
+    All fail-safe activations logged for audit purposes.
+    """
+    velocity_dampening: VelocityDampeningConfig = Field(
+        default_factory=VelocityDampeningConfig,
+        description="Velocity dampening configuration"
+    )
+    
+    domain_balance: DomainBalanceConfig = Field(
+        default_factory=DomainBalanceConfig,
+        description="Domain balance enforcement configuration"
+    )
+    
+    escalation_ceiling: EscalationCeilingConfig = Field(
+        default_factory=EscalationCeilingConfig,
+        description="Escalation ceiling configuration"
+    )
+    
+    confidence_collapse: ConfidenceCollapseConfig = Field(
+        default_factory=ConfidenceCollapseConfig,
+        description="Confidence collapse handling configuration"
+    )
+    
+    recent_activations: list[FailSafeActivation] = Field(
+        default_factory=list,
+        description="Recent fail-safe activations"
+    )
+    
+    total_activations_count: int = Field(
+        default=0, ge=0,
+        description="Total count of fail-safe activations"
+    )
+    
+    controls_active: bool = Field(
+        default=True,
+        description="Whether fail-safe controls are active"
+    )
+    
+    last_evaluation: datetime = Field(
+        default_factory=datetime.utcnow,
+        description="Last time controls were evaluated"
+    )
+
+
+# =============================================================================
+# PROVENANCE & CONTEXT ATTRIBUTION
+# =============================================================================
+
+class ProvenanceCategory(str, Enum):
+    """
+    Provenance categories for context attribution.
+    
+    Non-source disclosing - explains context origin without revealing sources.
+    """
+    STRUCTURAL_INDICATORS = "structural_indicators"
+    DISCOURSE_WEIGHTED = "discourse_weighted"
+    INSTITUTIONAL_POLICY = "institutional_policy"
+    ECONOMIC_INDICATORS = "economic_indicators"
+    BEHAVIORAL_PATTERNS = "behavioral_patterns"
+    MIXED_PROVENANCE = "mixed_provenance"
+
+
+class ContextProvenance(BaseModel):
+    """
+    Provenance & Context Attribution (Non-Source Disclosing)
+    
+    PURPOSE:
+    - Explanation, not traceability
+    - Visible in "Why This Is Shown" panels and audit logs
+    - Does NOT expose raw sources, feeds, or platforms
+    
+    EXAMPLES:
+    - "Context primarily driven by structural indicators"
+    - "Discourse-weighted context"
+    - "Institutional policy-influenced context"
+    """
+    context_id: str = Field(..., description="Associated context ID")
+    
+    primary_provenance: ProvenanceCategory = Field(
+        ..., description="Primary provenance category"
+    )
+    
+    secondary_provenance: Optional[ProvenanceCategory] = Field(
+        None, description="Secondary provenance category if applicable"
+    )
+    
+    provenance_weights: dict[str, float] = Field(
+        default_factory=dict,
+        description="Weights of each provenance category (0-1)"
+    )
+    
+    provenance_label: str = Field(
+        ..., description="Human-readable provenance label"
+    )
+    
+    provenance_description: str = Field(
+        ..., description="Detailed provenance description for explainability"
+    )
+    
+    indicator_types_present: list[str] = Field(
+        default_factory=list,
+        description="Types of indicators present (abstracted)"
+    )
+    
+    source_diversity_score: float = Field(
+        default=0.0, ge=0, le=1,
+        description="Diversity of sources contributing to context (0-1)"
+    )
+    
+    temporal_coverage: str = Field(
+        default="",
+        description="Temporal coverage description (e.g., 'past 7 days')"
+    )
+    
+    geographic_scope: str = Field(
+        default="",
+        description="Geographic scope description (e.g., 'regional', 'multi-state')"
+    )
+    
+    audit_visible: bool = Field(
+        default=True,
+        description="Whether provenance is visible in audit logs"
+    )
+    
+    explainability_visible: bool = Field(
+        default=True,
+        description="Whether provenance is visible in 'Why This Is Shown' panels"
+    )
+
+
+# =============================================================================
+# LIVE DATA GOVERNANCE LAYER - COMBINED
+# =============================================================================
+
+class LiveDataGovernanceLayer(BaseModel):
+    """
+    Live Data Governance Layer - Phase 1.4
+    
+    Combines all four governance layers:
+    1. Live Data Governance Mode (Policy Enforcement)
+    2. Data Freshness & Time Semantics
+    3. Live-Data Fail-Safe & Dampening Controls
+    4. Provenance & Context Attribution
+    
+    GLOBAL SAFETY RULES (NON-NEGOTIABLE):
+    - No alerts
+    - No event detection
+    - No actor modeling
+    - No individual or population surveillance
+    - No public-facing live feeds
+    - U.S. context only (global synthetic remains unchanged)
+    """
+    governance_mode: LiveDataGovernanceMode = Field(
+        default_factory=LiveDataGovernanceMode,
+        description="Live Data Governance Mode settings"
+    )
+    
+    data_freshness: Optional[DataFreshnessIndicator] = Field(
+        None, description="Data freshness indicator for current context"
+    )
+    
+    fail_safe_controls: LiveDataFailSafeControls = Field(
+        default_factory=LiveDataFailSafeControls,
+        description="Fail-safe and dampening controls"
+    )
+    
+    context_provenance: Optional[ContextProvenance] = Field(
+        None, description="Context provenance attribution"
+    )
+    
+    governance_status: str = Field(
+        default="active",
+        description="Overall governance status"
+    )
+    
+    last_governance_check: datetime = Field(
+        default_factory=datetime.utcnow,
+        description="Last time governance was checked"
+    )
+    
+    governance_violations: list[str] = Field(
+        default_factory=list,
+        description="List of any governance violations detected"
+    )
+    
+    safety_rules_enforced: list[str] = Field(
+        default_factory=lambda: [
+            "No alerts",
+            "No event detection",
+            "No actor modeling",
+            "No individual or population surveillance",
+            "No public-facing live feeds",
+            "U.S. context only for live data"
+        ],
+        description="Safety rules being enforced"
+    )
+    
+    audit_trail_active: bool = Field(
+        default=True,
+        description="Whether audit trail is active for governance decisions"
+    )
+    
+    master_disclaimer: str = Field(
+        default="Live data governance ensures AURORA maintains pre-incident, non-surveillance, non-alerting posture while processing live contextual indicators.",
+        description="Master disclaimer for live data governance"
+    )
