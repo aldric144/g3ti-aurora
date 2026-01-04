@@ -25,6 +25,8 @@ from app.models.schemas import (
     MonitoringPosture,
     HistoricalAnalog,
     JurisdictionContext,
+    GovernancePosture,
+    AuthorityEmphasis,
     ThreatClassCategory,
     ThreatClassAlignment,
     ThreatClassAlignmentResult,
@@ -76,126 +78,192 @@ class InMemoryStore:
     
     def _seed_jurisdictions(self):
         """
-        Seed global jurisdiction contexts for signal interpretation.
+        Seed jurisdiction contexts for signal interpretation.
+        
+        CRITICAL DISTINCTION:
+        - United States: Real operational context with full decision intelligence
+        - Non-US Jurisdictions: Synthetic demonstration data ONLY for architectural validation
         
         IMPORTANT: Jurisdiction context adjusts signal interpretation, weighting,
         historical analogs, and narrative framing. It does NOT activate new data
         collection or imply active monitoring of individuals or regions.
+        
+        SEED LIMITS (FOUNDER-LEVEL GUIDANCE):
+        - Best practice: 10 non-US jurisdictions + 1 United States
+        - Maximum: 12 non-US jurisdictions
         """
-        jurisdictions_data = [
-            {"code": "US", "name": "United States", "region": "North America", "tags": ["north_america", "developed_economy", "federal_republic"]},
-            {"code": "CA", "name": "Canada", "region": "North America", "tags": ["north_america", "developed_economy", "parliamentary"]},
-            {"code": "MX", "name": "Mexico", "region": "North America", "tags": ["north_america", "emerging_economy", "federal_republic"]},
-            {"code": "GB", "name": "United Kingdom", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary"]},
-            {"code": "DE", "name": "Germany", "region": "Europe", "tags": ["europe", "developed_economy", "federal_republic", "eu_member"]},
-            {"code": "FR", "name": "France", "region": "Europe", "tags": ["europe", "developed_economy", "semi_presidential", "eu_member"]},
-            {"code": "IT", "name": "Italy", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "ES", "name": "Spain", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "PT", "name": "Portugal", "region": "Europe", "tags": ["europe", "developed_economy", "semi_presidential", "eu_member"]},
-            {"code": "NL", "name": "Netherlands", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "BE", "name": "Belgium", "region": "Europe", "tags": ["europe", "developed_economy", "federal_parliamentary", "eu_member"]},
-            {"code": "AT", "name": "Austria", "region": "Europe", "tags": ["europe", "developed_economy", "federal_republic", "eu_member"]},
-            {"code": "CH", "name": "Switzerland", "region": "Europe", "tags": ["europe", "developed_economy", "federal_republic"]},
-            {"code": "SE", "name": "Sweden", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "NO", "name": "Norway", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary"]},
-            {"code": "DK", "name": "Denmark", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "FI", "name": "Finland", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "IE", "name": "Ireland", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "PL", "name": "Poland", "region": "Europe", "tags": ["europe", "emerging_economy", "parliamentary", "eu_member"]},
-            {"code": "CZ", "name": "Czech Republic", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "HU", "name": "Hungary", "region": "Europe", "tags": ["europe", "emerging_economy", "parliamentary", "eu_member"]},
-            {"code": "RO", "name": "Romania", "region": "Europe", "tags": ["europe", "emerging_economy", "semi_presidential", "eu_member"]},
-            {"code": "BG", "name": "Bulgaria", "region": "Europe", "tags": ["europe", "emerging_economy", "parliamentary", "eu_member"]},
-            {"code": "GR", "name": "Greece", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "HR", "name": "Croatia", "region": "Europe", "tags": ["europe", "emerging_economy", "parliamentary", "eu_member"]},
-            {"code": "SK", "name": "Slovakia", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "SI", "name": "Slovenia", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "LT", "name": "Lithuania", "region": "Europe", "tags": ["europe", "developed_economy", "semi_presidential", "eu_member"]},
-            {"code": "LV", "name": "Latvia", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "EE", "name": "Estonia", "region": "Europe", "tags": ["europe", "developed_economy", "parliamentary", "eu_member"]},
-            {"code": "RU", "name": "Russia", "region": "Europe", "tags": ["europe", "emerging_economy", "federal_republic"]},
-            {"code": "UA", "name": "Ukraine", "region": "Europe", "tags": ["europe", "emerging_economy", "semi_presidential"]},
-            {"code": "TR", "name": "Turkey", "region": "Middle East", "tags": ["middle_east", "emerging_economy", "presidential"]},
-            {"code": "IL", "name": "Israel", "region": "Middle East", "tags": ["middle_east", "developed_economy", "parliamentary"]},
-            {"code": "SA", "name": "Saudi Arabia", "region": "Middle East", "tags": ["middle_east", "emerging_economy", "monarchy"]},
-            {"code": "AE", "name": "United Arab Emirates", "region": "Middle East", "tags": ["middle_east", "developed_economy", "federation"]},
-            {"code": "QA", "name": "Qatar", "region": "Middle East", "tags": ["middle_east", "developed_economy", "monarchy"]},
-            {"code": "KW", "name": "Kuwait", "region": "Middle East", "tags": ["middle_east", "developed_economy", "constitutional_monarchy"]},
-            {"code": "BH", "name": "Bahrain", "region": "Middle East", "tags": ["middle_east", "developed_economy", "constitutional_monarchy"]},
-            {"code": "OM", "name": "Oman", "region": "Middle East", "tags": ["middle_east", "emerging_economy", "monarchy"]},
-            {"code": "JO", "name": "Jordan", "region": "Middle East", "tags": ["middle_east", "emerging_economy", "constitutional_monarchy"]},
-            {"code": "LB", "name": "Lebanon", "region": "Middle East", "tags": ["middle_east", "emerging_economy", "parliamentary"]},
-            {"code": "EG", "name": "Egypt", "region": "Africa", "tags": ["africa", "emerging_economy", "presidential"]},
-            {"code": "ZA", "name": "South Africa", "region": "Africa", "tags": ["africa", "emerging_economy", "parliamentary"]},
-            {"code": "NG", "name": "Nigeria", "region": "Africa", "tags": ["africa", "emerging_economy", "federal_republic"]},
-            {"code": "KE", "name": "Kenya", "region": "Africa", "tags": ["africa", "emerging_economy", "presidential"]},
-            {"code": "GH", "name": "Ghana", "region": "Africa", "tags": ["africa", "emerging_economy", "presidential"]},
-            {"code": "ET", "name": "Ethiopia", "region": "Africa", "tags": ["africa", "emerging_economy", "federal_republic"]},
-            {"code": "TZ", "name": "Tanzania", "region": "Africa", "tags": ["africa", "emerging_economy", "presidential"]},
-            {"code": "MA", "name": "Morocco", "region": "Africa", "tags": ["africa", "emerging_economy", "constitutional_monarchy"]},
-            {"code": "DZ", "name": "Algeria", "region": "Africa", "tags": ["africa", "emerging_economy", "presidential"]},
-            {"code": "TN", "name": "Tunisia", "region": "Africa", "tags": ["africa", "emerging_economy", "semi_presidential"]},
-            {"code": "CN", "name": "China", "region": "Asia Pacific", "tags": ["asia_pacific", "emerging_economy", "single_party"]},
-            {"code": "JP", "name": "Japan", "region": "Asia Pacific", "tags": ["asia_pacific", "developed_economy", "parliamentary"]},
-            {"code": "KR", "name": "South Korea", "region": "Asia Pacific", "tags": ["asia_pacific", "developed_economy", "presidential"]},
-            {"code": "IN", "name": "India", "region": "Asia Pacific", "tags": ["asia_pacific", "emerging_economy", "federal_parliamentary"]},
-            {"code": "AU", "name": "Australia", "region": "Asia Pacific", "tags": ["asia_pacific", "developed_economy", "federal_parliamentary"]},
-            {"code": "NZ", "name": "New Zealand", "region": "Asia Pacific", "tags": ["asia_pacific", "developed_economy", "parliamentary"]},
-            {"code": "SG", "name": "Singapore", "region": "Asia Pacific", "tags": ["asia_pacific", "developed_economy", "parliamentary"]},
-            {"code": "MY", "name": "Malaysia", "region": "Asia Pacific", "tags": ["asia_pacific", "emerging_economy", "federal_parliamentary"]},
-            {"code": "TH", "name": "Thailand", "region": "Asia Pacific", "tags": ["asia_pacific", "emerging_economy", "constitutional_monarchy"]},
-            {"code": "VN", "name": "Vietnam", "region": "Asia Pacific", "tags": ["asia_pacific", "emerging_economy", "single_party"]},
-            {"code": "ID", "name": "Indonesia", "region": "Asia Pacific", "tags": ["asia_pacific", "emerging_economy", "presidential"]},
-            {"code": "PH", "name": "Philippines", "region": "Asia Pacific", "tags": ["asia_pacific", "emerging_economy", "presidential"]},
-            {"code": "PK", "name": "Pakistan", "region": "Asia Pacific", "tags": ["asia_pacific", "emerging_economy", "federal_parliamentary"]},
-            {"code": "BD", "name": "Bangladesh", "region": "Asia Pacific", "tags": ["asia_pacific", "emerging_economy", "parliamentary"]},
-            {"code": "TW", "name": "Taiwan", "region": "Asia Pacific", "tags": ["asia_pacific", "developed_economy", "semi_presidential"]},
-            {"code": "HK", "name": "Hong Kong", "region": "Asia Pacific", "tags": ["asia_pacific", "developed_economy", "special_administrative"]},
-            {"code": "BR", "name": "Brazil", "region": "South America", "tags": ["south_america", "emerging_economy", "federal_republic"]},
-            {"code": "AR", "name": "Argentina", "region": "South America", "tags": ["south_america", "emerging_economy", "federal_republic"]},
-            {"code": "CL", "name": "Chile", "region": "South America", "tags": ["south_america", "emerging_economy", "presidential"]},
-            {"code": "CO", "name": "Colombia", "region": "South America", "tags": ["south_america", "emerging_economy", "presidential"]},
-            {"code": "PE", "name": "Peru", "region": "South America", "tags": ["south_america", "emerging_economy", "presidential"]},
-            {"code": "VE", "name": "Venezuela", "region": "South America", "tags": ["south_america", "emerging_economy", "federal_republic"]},
-            {"code": "EC", "name": "Ecuador", "region": "South America", "tags": ["south_america", "emerging_economy", "presidential"]},
-            {"code": "UY", "name": "Uruguay", "region": "South America", "tags": ["south_america", "emerging_economy", "presidential"]},
-            {"code": "PY", "name": "Paraguay", "region": "South America", "tags": ["south_america", "emerging_economy", "presidential"]},
-            {"code": "BO", "name": "Bolivia", "region": "South America", "tags": ["south_america", "emerging_economy", "presidential"]},
-            {"code": "PA", "name": "Panama", "region": "Central America", "tags": ["central_america", "emerging_economy", "presidential"]},
-            {"code": "CR", "name": "Costa Rica", "region": "Central America", "tags": ["central_america", "emerging_economy", "presidential"]},
-            {"code": "GT", "name": "Guatemala", "region": "Central America", "tags": ["central_america", "emerging_economy", "presidential"]},
-            {"code": "HN", "name": "Honduras", "region": "Central America", "tags": ["central_america", "emerging_economy", "presidential"]},
-            {"code": "SV", "name": "El Salvador", "region": "Central America", "tags": ["central_america", "emerging_economy", "presidential"]},
-            {"code": "NI", "name": "Nicaragua", "region": "Central America", "tags": ["central_america", "emerging_economy", "presidential"]},
-            {"code": "JM", "name": "Jamaica", "region": "Caribbean", "tags": ["caribbean", "emerging_economy", "parliamentary"]},
-            {"code": "TT", "name": "Trinidad and Tobago", "region": "Caribbean", "tags": ["caribbean", "emerging_economy", "parliamentary"]},
-            {"code": "DO", "name": "Dominican Republic", "region": "Caribbean", "tags": ["caribbean", "emerging_economy", "presidential"]},
-            {"code": "CU", "name": "Cuba", "region": "Caribbean", "tags": ["caribbean", "emerging_economy", "single_party"]},
-            {"code": "PR", "name": "Puerto Rico", "region": "Caribbean", "tags": ["caribbean", "developed_economy", "us_territory"]},
+        
+        us_jurisdiction = JurisdictionContext(
+            code="US",
+            name="United States",
+            region="North America",
+            is_synthetic=False,
+            is_operational=True,
+            governance_posture=GovernancePosture.FEDERAL,
+            authority_emphasis=AuthorityEmphasis.MIXED,
+            public_communication_norm="transparent",
+            escalation_sensitivity="moderate",
+            decision_pathway_adjustments={
+                "economic_engagement": "Federal and state-level coordination",
+                "community_outreach": "Multi-jurisdictional community engagement",
+                "communications": "Public affairs with transparency emphasis",
+            },
+            signal_weight_modifiers={
+                "economic_stress": 1.0,
+                "social_discourse": 1.0,
+                "behavioral_trend": 1.0,
+                "environmental_stressor": 1.0,
+            },
+            historical_analog_tags=["north_america", "developed_economy", "federal_republic"],
+            narrative_context={
+                "governance_type": "Federal Republic",
+                "economic_classification": "Developed",
+            },
+            economic_baseline={
+                "baseline_unemployment": 4.0,
+                "baseline_inflation": 2.5,
+            },
+            cultural_context_notes=[],
+            legal_framework_notes=[],
+            synthetic_disclaimer="",
+            is_active=True,
+        )
+        self.jurisdictions["US"] = us_jurisdiction
+        
+        synthetic_jurisdictions = [
+            {
+                "code": "GB",
+                "name": "United Kingdom",
+                "region": "Europe",
+                "governance_posture": GovernancePosture.UNITARY,
+                "authority_emphasis": AuthorityEmphasis.CIVIL,
+                "public_communication_norm": "reserved",
+                "escalation_sensitivity": "moderate",
+                "governance_descriptor": "Highly centralized governance context with parliamentary tradition",
+            },
+            {
+                "code": "DE",
+                "name": "Germany",
+                "region": "Europe",
+                "governance_posture": GovernancePosture.FEDERAL,
+                "authority_emphasis": AuthorityEmphasis.ADMINISTRATIVE,
+                "public_communication_norm": "balanced",
+                "escalation_sensitivity": "moderate",
+                "governance_descriptor": "Federal structure with strong administrative emphasis",
+            },
+            {
+                "code": "FR",
+                "name": "France",
+                "region": "Europe",
+                "governance_posture": GovernancePosture.CENTRALIZED,
+                "authority_emphasis": AuthorityEmphasis.ADMINISTRATIVE,
+                "public_communication_norm": "balanced",
+                "escalation_sensitivity": "high",
+                "governance_descriptor": "Centralized governance with strong civil-administrative response preference",
+            },
+            {
+                "code": "JP",
+                "name": "Japan",
+                "region": "Asia Pacific",
+                "governance_posture": GovernancePosture.UNITARY,
+                "authority_emphasis": AuthorityEmphasis.ADMINISTRATIVE,
+                "public_communication_norm": "reserved",
+                "escalation_sensitivity": "high",
+                "governance_descriptor": "Unitary parliamentary system with consensus-based decision making",
+            },
+            {
+                "code": "AU",
+                "name": "Australia",
+                "region": "Asia Pacific",
+                "governance_posture": GovernancePosture.FEDERAL,
+                "authority_emphasis": AuthorityEmphasis.MIXED,
+                "public_communication_norm": "transparent",
+                "escalation_sensitivity": "moderate",
+                "governance_descriptor": "Federal parliamentary system with state-level coordination",
+            },
+            {
+                "code": "CA",
+                "name": "Canada",
+                "region": "North America",
+                "governance_posture": GovernancePosture.FEDERAL,
+                "authority_emphasis": AuthorityEmphasis.CIVIL,
+                "public_communication_norm": "transparent",
+                "escalation_sensitivity": "low",
+                "governance_descriptor": "Federal parliamentary democracy with provincial autonomy",
+            },
+            {
+                "code": "BR",
+                "name": "Brazil",
+                "region": "South America",
+                "governance_posture": GovernancePosture.FEDERAL,
+                "authority_emphasis": AuthorityEmphasis.MIXED,
+                "public_communication_norm": "balanced",
+                "escalation_sensitivity": "moderate",
+                "governance_descriptor": "Federal republic with multi-level governance coordination",
+            },
+            {
+                "code": "IN",
+                "name": "India",
+                "region": "Asia Pacific",
+                "governance_posture": GovernancePosture.FEDERAL,
+                "authority_emphasis": AuthorityEmphasis.ADMINISTRATIVE,
+                "public_communication_norm": "balanced",
+                "escalation_sensitivity": "moderate",
+                "governance_descriptor": "Federal parliamentary system with state-level diversity",
+            },
+            {
+                "code": "SG",
+                "name": "Singapore",
+                "region": "Asia Pacific",
+                "governance_posture": GovernancePosture.UNITARY,
+                "authority_emphasis": AuthorityEmphasis.ADMINISTRATIVE,
+                "public_communication_norm": "reserved",
+                "escalation_sensitivity": "high",
+                "governance_descriptor": "Highly centralized city-state with strong administrative capacity",
+            },
+            {
+                "code": "AE",
+                "name": "United Arab Emirates",
+                "region": "Middle East",
+                "governance_posture": GovernancePosture.FEDERAL,
+                "authority_emphasis": AuthorityEmphasis.ADMINISTRATIVE,
+                "public_communication_norm": "reserved",
+                "escalation_sensitivity": "high",
+                "governance_descriptor": "Federal structure with emirate-level coordination",
+            },
         ]
         
-        for j in jurisdictions_data:
+        synthetic_disclaimer = (
+            "SYNTHETIC DEMONSTRATION DATA: This jurisdiction context uses synthetic, "
+            "non-representative seed profiles for demonstration and architectural validation only. "
+            "This does NOT represent real-world intelligence, monitoring, or coverage. "
+            "No foreign actor modeling, population-level inference, or event prediction is performed."
+        )
+        
+        for j in synthetic_jurisdictions:
             jurisdiction = JurisdictionContext(
                 code=j["code"],
                 name=j["name"],
                 region=j["region"],
-                signal_weight_modifiers={
-                    "economic_stress": 1.0,
-                    "social_discourse": 1.0,
-                    "behavioral_trend": 1.0,
-                    "environmental_stressor": 1.0,
+                is_synthetic=True,
+                is_operational=False,
+                governance_posture=j["governance_posture"],
+                authority_emphasis=j["authority_emphasis"],
+                public_communication_norm=j["public_communication_norm"],
+                escalation_sensitivity=j["escalation_sensitivity"],
+                decision_pathway_adjustments={
+                    "governance_context": j["governance_descriptor"],
                 },
-                historical_analog_tags=j["tags"],
+                signal_weight_modifiers={},
+                historical_analog_tags=[],
                 narrative_context={
-                    "governance_type": j["tags"][-1].replace("_", " ").title() if j["tags"] else "Unknown",
-                    "economic_classification": "Developed" if "developed_economy" in j["tags"] else "Emerging",
+                    "governance_descriptor": j["governance_descriptor"],
+                    "data_status": "SYNTHETIC DEMONSTRATION ONLY",
                 },
-                economic_baseline={
-                    "baseline_unemployment": 5.0,
-                    "baseline_inflation": 2.0,
-                },
+                economic_baseline={},
                 cultural_context_notes=[],
                 legal_framework_notes=[],
+                synthetic_disclaimer=synthetic_disclaimer,
                 is_active=True,
             )
             self.jurisdictions[j["code"]] = jurisdiction
@@ -205,7 +273,7 @@ class InMemoryStore:
             actor="system",
             target_type="jurisdiction",
             target_id="all",
-            reasoning=f"Seeded {len(jurisdictions_data)} global jurisdiction contexts"
+            reasoning=f"Seeded 1 operational (US) + {len(synthetic_jurisdictions)} synthetic jurisdiction contexts"
         )
     
     def _seed_demo_data(self):

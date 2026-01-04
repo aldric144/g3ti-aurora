@@ -306,6 +306,27 @@ class ThreatSummary(BaseModel):
     updated_at: datetime
 
 
+class GovernancePosture(str, Enum):
+    """
+    Governance posture classification for jurisdiction context.
+    Used for decision pathway adjustment, not intelligence assessment.
+    """
+    CENTRALIZED = "centralized"
+    DECENTRALIZED = "decentralized"
+    FEDERAL = "federal"
+    UNITARY = "unitary"
+
+
+class AuthorityEmphasis(str, Enum):
+    """
+    Authority emphasis classification for jurisdiction context.
+    Affects decision pathway phrasing and tone.
+    """
+    CIVIL = "civil"
+    ADMINISTRATIVE = "administrative"
+    MIXED = "mixed"
+
+
 class JurisdictionContext(BaseModel):
     """
     Jurisdiction Context for signal interpretation and narrative framing.
@@ -317,10 +338,49 @@ class JurisdictionContext(BaseModel):
     All signal ingestion remains abstracted and globally lawful.
     
     Architecture supports phased expansion of jurisdiction-specific context models.
+    
+    CRITICAL DISTINCTION:
+    - United States: Real operational context with full decision intelligence
+    - Non-US Jurisdictions: Synthetic demonstration data ONLY for architectural validation
     """
     code: str = Field(..., description="ISO 3166-1 alpha-2 country code")
     name: str = Field(..., description="Country/jurisdiction name")
     region: str = Field(..., description="Geographic region")
+    
+    is_synthetic: bool = Field(
+        default=False,
+        description="True for non-US jurisdictions using synthetic demonstration data"
+    )
+    
+    is_operational: bool = Field(
+        default=False,
+        description="True only for United States - real operational context"
+    )
+    
+    governance_posture: GovernancePosture = Field(
+        default=GovernancePosture.FEDERAL,
+        description="Governance structure classification"
+    )
+    
+    authority_emphasis: AuthorityEmphasis = Field(
+        default=AuthorityEmphasis.MIXED,
+        description="Civil vs administrative authority emphasis"
+    )
+    
+    public_communication_norm: str = Field(
+        default="balanced",
+        description="Public communication norms (transparent, reserved, balanced)"
+    )
+    
+    escalation_sensitivity: str = Field(
+        default="moderate",
+        description="Policy-level escalation sensitivity (low, moderate, high)"
+    )
+    
+    decision_pathway_adjustments: dict[str, str] = Field(
+        default_factory=dict,
+        description="Jurisdiction-specific pathway phrasing and tone adjustments"
+    )
     
     signal_weight_modifiers: dict[str, float] = Field(
         default_factory=dict,
@@ -352,6 +412,11 @@ class JurisdictionContext(BaseModel):
         description="Relevant legal/regulatory context for narrative framing"
     )
     
+    synthetic_disclaimer: str = Field(
+        default="",
+        description="Disclaimer text for synthetic non-US jurisdictions"
+    )
+    
     is_active: bool = Field(default=True, description="Whether this jurisdiction context is active")
     
     class Config:
@@ -378,6 +443,8 @@ class JurisdictionSummary(BaseModel):
     code: str
     name: str
     region: str
+    is_synthetic: bool = False
+    is_operational: bool = False
 
 
 class RegionGranularity(str, Enum):

@@ -264,6 +264,8 @@ interface JurisdictionSummary {
   code: string;
   name: string;
   region: string;
+  is_synthetic: boolean;
+  is_operational: boolean;
 }
 
 interface JurisdictionListResponse {
@@ -557,28 +559,49 @@ function App() {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-[#9FB0C7]">Jurisdiction Context:</span>
                 <Select value={currentJurisdiction} onValueChange={handleJurisdictionChange}>
-                  <SelectTrigger className="w-48 h-8 bg-[#16233A] border-[#16233A] text-sm text-[#C9D4E3]">
+                  <SelectTrigger className="w-56 h-8 bg-[#16233A] border-[#16233A] text-sm text-[#C9D4E3]">
                     <SelectValue placeholder="Select jurisdiction" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#16233A] border-[#16233A] max-h-80">
+                    {jurisdictions.filter(j => j.is_operational).map((j) => (
+                      <SelectItem key={j.code} value={j.code} className="text-sm text-[#C9D4E3]">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-[#4F81BD]"></span>
+                          <span>{j.name}</span>
+                          <span className="text-[10px] text-[#4F81BD]">(Operational)</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    <div className="px-2 py-1 text-xs font-semibold text-[#F4B400] bg-[#121C2D] border-t border-[#16233A]">
+                      Synthetic Demo Contexts
+                    </div>
                     {Object.entries(
-                      jurisdictions.reduce((acc, j) => {
+                      jurisdictions.filter(j => j.is_synthetic).reduce((acc, j) => {
                         if (!acc[j.region]) acc[j.region] = [];
                         acc[j.region].push(j);
                         return acc;
                       }, {} as Record<string, JurisdictionSummary[]>)
                     ).map(([region, items]) => (
                       <div key={region}>
-                        <div className="px-2 py-1 text-xs font-semibold text-[#9FB0C7] bg-[#121C2D]">{region}</div>
+                        <div className="px-2 py-1 text-xs text-[#9FB0C7] bg-[#121C2D]/50">{region}</div>
                         {items.map((j) => (
-                          <SelectItem key={j.code} value={j.code} className="text-sm text-[#C9D4E3]">
-                            {j.name}
+                          <SelectItem key={j.code} value={j.code} className="text-sm text-[#9FB0C7]">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-[#F4B400]/50"></span>
+                              <span>{j.name}</span>
+                              <span className="text-[10px] text-[#F4B400]/70">(Synthetic)</span>
+                            </div>
                           </SelectItem>
                         ))}
                       </div>
                     ))}
                   </SelectContent>
                 </Select>
+                {jurisdictions.find(j => j.code === currentJurisdiction)?.is_synthetic && (
+                  <Badge className="bg-[#F4B400]/10 text-[#F4B400] border-[#F4B400]/30 text-[10px]">
+                    Synthetic Demo
+                  </Badge>
+                )}
               </div>
               {systemStatus && (
                 <div className="flex items-center gap-4 text-sm">
@@ -601,6 +624,21 @@ function App() {
           </div>
         </div>
       </header>
+
+      {jurisdictions.find(j => j.code === currentJurisdiction)?.is_synthetic && (
+        <div className="bg-[#F4B400]/5 border-b border-[#F4B400]/20 py-3 px-4">
+          <div className="container mx-auto">
+            <Alert className="bg-[#F4B400]/10 border-[#F4B400]/30">
+              <AlertTriangle className="h-4 w-4 text-[#F4B400]" />
+              <AlertTitle className="text-[#F4B400] text-sm font-medium">Synthetic Demonstration Context Active</AlertTitle>
+              <AlertDescription className="text-[#C9D4E3] text-xs mt-1">
+                <strong>{jurisdictions.find(j => j.code === currentJurisdiction)?.name}</strong> uses synthetic, non-representative seed profiles for demonstration and architectural validation only. 
+                This does NOT represent real-world intelligence, monitoring, or coverage. No foreign actor modeling, population-level inference, threat probabilities, or event prediction is performed outside the United States.
+              </AlertDescription>
+            </Alert>
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-12 gap-6">
