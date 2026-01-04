@@ -219,6 +219,7 @@ class ThreatObject(BaseModel):
     region_context: Optional[dict] = Field(default=None, description="Phase 2: Region-Aware Intelligence context")
     escalation_pathway: Optional[dict] = Field(default=None, description="Phase 2: Escalation Pathway model")
     threat_class_alignment: Optional[dict] = Field(default=None, description="Probabilistic Threat Class Alignment result")
+    decision_advantage_layer: Optional[dict] = Field(default=None, description="Phase 3: Decision Advantage Layer")
     
     status: str = Field(default="active", description="Threat status: active, resolved, archived")
     
@@ -645,4 +646,382 @@ class ThreatClassAlignmentResult(BaseModel):
             "Maintains pre-incident decision-intelligence posture"
         ],
         description="Policy compliance notes"
+    )
+
+
+class DecisionPathwayCategory(str, Enum):
+    """
+    Decision Pathway Categories - Advisory Only
+    
+    These are non-enforcement decision pathway categories for leadership guidance.
+    All pathways are optional, advisory, and proportional.
+    
+    POLICY-SAFE: No enforcement, tactical, or investigative framing.
+    """
+    ECONOMIC_ENGAGEMENT = "economic_engagement"
+    COMMUNITY_OUTREACH = "community_outreach"
+    COMMUNICATIONS_STRATEGY = "communications_strategy"
+    STAKEHOLDER_COORDINATION = "stakeholder_coordination"
+    RESOURCE_POSITIONING = "resource_positioning"
+    MONITORING_ADJUSTMENT = "monitoring_adjustment"
+    INSTITUTIONAL_RESILIENCE = "institutional_resilience"
+    INTERAGENCY_LIAISON = "interagency_liaison"
+
+
+class DecisionPathwayRelevance(str, Enum):
+    """Relevance ranking for decision pathways"""
+    HIGH = "high"
+    MODERATE = "moderate"
+    LOW = "low"
+
+
+class DecisionPathway(BaseModel):
+    """
+    Individual Decision Pathway with advisory guidance.
+    
+    Maps current threat patterns to decision pathway categories.
+    All guidance is optional, advisory, and proportional.
+    
+    EXPLICITLY AVOIDS: Enforcement, tactical instruction, investigative framing.
+    """
+    pathway_category: DecisionPathwayCategory = Field(..., description="Decision pathway category")
+    relevance: DecisionPathwayRelevance = Field(..., description="Relevance ranking")
+    relevance_score: float = Field(..., ge=0, le=1, description="Numeric relevance score (0-1)")
+    
+    advisory_summary: str = Field(..., description="Brief advisory summary for this pathway")
+    
+    suggested_considerations: list[str] = Field(
+        default_factory=list,
+        description="Optional considerations for leadership (not directives)"
+    )
+    
+    proportionality_note: str = Field(
+        ..., description="Note on proportional response considerations"
+    )
+    
+    contributing_factors: list[str] = Field(
+        default_factory=list,
+        description="Threat factors that make this pathway relevant"
+    )
+    
+    confidence: float = Field(..., ge=0, le=1, description="Confidence in pathway relevance")
+
+
+class DecisionPathwayIntelligence(BaseModel):
+    """
+    Decision Pathway Intelligence - Phase 3 Component 1
+    
+    Advisory layer that maps current threat patterns to decision pathway categories.
+    Provides leadership with early, proportional, non-enforcement decision guidance.
+    
+    CRITICAL CONSTRAINTS:
+    - All guidance is optional and advisory
+    - No enforcement or tactical instruction
+    - Proportional to assessed risk level
+    - Pre-incident decision support only
+    """
+    threat_id: str = Field(..., description="Associated threat object ID")
+    
+    pathways: list[DecisionPathway] = Field(
+        default_factory=list,
+        description="Ranked decision pathways by relevance"
+    )
+    
+    primary_pathway: Optional[DecisionPathwayCategory] = Field(
+        None, description="Highest-relevance pathway category"
+    )
+    
+    overall_advisory_posture: str = Field(
+        ..., description="Overall advisory posture summary"
+    )
+    
+    proportionality_assessment: str = Field(
+        ..., description="Assessment of proportional response considerations"
+    )
+    
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    
+    disclaimer: str = Field(
+        default="Decision pathways are advisory and optional. All guidance is proportional to assessed patterns and does not constitute enforcement direction or tactical instruction.",
+        description="Required disclaimer"
+    )
+    
+    policy_notes: list[str] = Field(
+        default_factory=lambda: [
+            "All pathways are optional and advisory",
+            "No enforcement or tactical instruction provided",
+            "Guidance is proportional to assessed risk patterns",
+            "Leadership retains full decision authority",
+            "Pre-incident decision support only"
+        ],
+        description="Policy compliance notes"
+    )
+
+
+class ImpactDomain(str, Enum):
+    """
+    Impact domains for system-level forecasting.
+    Focuses on institutional and community outcomes.
+    """
+    INSTITUTIONAL_TRUST = "institutional_trust"
+    COMMUNITY_STABILITY = "community_stability"
+    OPERATIONAL_CONTINUITY = "operational_continuity"
+    ECONOMIC_RESILIENCE = "economic_resilience"
+    SOCIAL_COHESION = "social_cohesion"
+    INFRASTRUCTURE_INTEGRITY = "infrastructure_integrity"
+
+
+class ImpactProjection(BaseModel):
+    """
+    Individual impact projection for a specific domain.
+    
+    Estimates consequences if current trajectories persist.
+    Focuses on institutional and community outcomes.
+    """
+    domain: ImpactDomain = Field(..., description="Impact domain")
+    
+    current_assessment: str = Field(..., description="Current state assessment")
+    
+    projected_trajectory: str = Field(
+        ..., description="Projected trajectory if current patterns persist"
+    )
+    
+    impact_severity: str = Field(
+        ..., description="Projected impact severity: minimal, moderate, significant, substantial"
+    )
+    impact_severity_score: float = Field(..., ge=0, le=1, description="Numeric severity score")
+    
+    time_horizon_hours: tuple[float, float] = Field(
+        ..., description="Time horizon for projection (min, max hours)"
+    )
+    
+    confidence: float = Field(..., ge=0, le=1, description="Confidence in projection")
+    confidence_band: tuple[float, float] = Field(
+        ..., description="Confidence band (lower, upper) for severity score"
+    )
+    
+    key_assumptions: list[str] = Field(
+        default_factory=list,
+        description="Key assumptions underlying this projection"
+    )
+    
+    mitigating_factors: list[str] = Field(
+        default_factory=list,
+        description="Factors that could reduce projected impact"
+    )
+
+
+class ImpactForecast(BaseModel):
+    """
+    Impact Forecasting - Phase 3 Component 2
+    
+    System-level impact projection that estimates consequences
+    if current trajectories persist.
+    
+    CRITICAL CONSTRAINTS:
+    - Focuses on institutional and community outcomes
+    - Includes time horizons and confidence bands
+    - Avoids predicting specific events or actors
+    - System-level only, not individual-level
+    """
+    threat_id: str = Field(..., description="Associated threat object ID")
+    
+    projections: list[ImpactProjection] = Field(
+        default_factory=list,
+        description="Impact projections by domain"
+    )
+    
+    overall_impact_assessment: str = Field(
+        ..., description="Overall system-level impact assessment"
+    )
+    
+    primary_concern_domain: Optional[ImpactDomain] = Field(
+        None, description="Domain with highest projected impact"
+    )
+    
+    aggregate_severity_score: float = Field(
+        ..., ge=0, le=1, description="Aggregate severity across all domains"
+    )
+    
+    projection_time_horizon: str = Field(
+        ..., description="Overall time horizon for projections"
+    )
+    
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    
+    disclaimer: str = Field(
+        default="Impact projections are system-level estimates based on current trajectory patterns. They do not predict specific events, actors, or outcomes. All projections include uncertainty bounds.",
+        description="Required disclaimer"
+    )
+    
+    policy_notes: list[str] = Field(
+        default_factory=lambda: [
+            "Projections focus on institutional and community outcomes",
+            "No prediction of specific events or actors",
+            "All projections include confidence bands and time horizons",
+            "System-level analysis only, not individual attribution",
+            "For decision support, not operational forecasting"
+        ],
+        description="Policy compliance notes"
+    )
+
+
+class AuthorityDomain(str, Enum):
+    """
+    Leadership/authority domains for recommendation alignment.
+    Identifies which domains are best positioned to respond.
+    
+    POLICY-SAFE: No naming of individuals, units, or enforcement targets.
+    """
+    EXECUTIVE_LEADERSHIP = "executive_leadership"
+    OPERATIONS_MANAGEMENT = "operations_management"
+    COMMUNICATIONS_PUBLIC_AFFAIRS = "communications_public_affairs"
+    COMMUNITY_RELATIONS = "community_relations"
+    RISK_MANAGEMENT = "risk_management"
+    LEGAL_COMPLIANCE = "legal_compliance"
+    HUMAN_RESOURCES = "human_resources"
+    EXTERNAL_AFFAIRS = "external_affairs"
+    STRATEGIC_PLANNING = "strategic_planning"
+    INTERAGENCY_COORDINATION = "interagency_coordination"
+
+
+class AuthorityRecommendation(BaseModel):
+    """
+    Individual authority-aware recommendation.
+    
+    Identifies which leadership domains are best positioned to respond
+    without naming individuals, units, or enforcement targets.
+    """
+    authority_domain: AuthorityDomain = Field(..., description="Leadership domain")
+    
+    relevance_score: float = Field(..., ge=0, le=1, description="Relevance to current threat pattern")
+    
+    positioning_rationale: str = Field(
+        ..., description="Why this domain is well-positioned to respond"
+    )
+    
+    suggested_awareness_areas: list[str] = Field(
+        default_factory=list,
+        description="Areas this domain should be aware of (not directives)"
+    )
+    
+    coordination_considerations: list[str] = Field(
+        default_factory=list,
+        description="Considerations for coordination with other domains"
+    )
+    
+    context_applicability: list[str] = Field(
+        default_factory=list,
+        description="Contexts where this applies: government, enterprise, multi-agency"
+    )
+    
+    confidence: float = Field(..., ge=0, le=1, description="Confidence in recommendation")
+
+
+class AuthorityAwareRecommendations(BaseModel):
+    """
+    Authority-Aware Recommendation Layer - Phase 3 Component 3
+    
+    Role/domain alignment model that identifies which leadership domains
+    are best positioned to respond.
+    
+    CRITICAL CONSTRAINTS:
+    - No naming of individuals, units, or enforcement targets
+    - Supports government, enterprise, and multi-agency contexts
+    - Advisory only, not directive
+    - Domain-level, not person-level
+    """
+    threat_id: str = Field(..., description="Associated threat object ID")
+    
+    recommendations: list[AuthorityRecommendation] = Field(
+        default_factory=list,
+        description="Authority-aware recommendations by domain"
+    )
+    
+    primary_authority_domain: Optional[AuthorityDomain] = Field(
+        None, description="Domain with highest relevance"
+    )
+    
+    coordination_summary: str = Field(
+        ..., description="Summary of cross-domain coordination considerations"
+    )
+    
+    context_applicability: str = Field(
+        ..., description="Applicable contexts: government, enterprise, multi-agency, or all"
+    )
+    
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    
+    disclaimer: str = Field(
+        default="Authority recommendations identify leadership domains, not individuals or units. All recommendations are advisory and support decision-making without directing specific actions.",
+        description="Required disclaimer"
+    )
+    
+    policy_notes: list[str] = Field(
+        default_factory=lambda: [
+            "No individuals, units, or enforcement targets named",
+            "Domain-level recommendations only",
+            "Supports government, enterprise, and multi-agency contexts",
+            "Advisory only, not directive",
+            "Leadership retains full decision authority"
+        ],
+        description="Policy compliance notes"
+    )
+
+
+class DecisionAdvantageLayer(BaseModel):
+    """
+    Decision Advantage Layer - Phase 3 Complete Result
+    
+    Provides leadership with early, proportional, non-enforcement decision guidance
+    based on modeled risk patterns.
+    
+    Combines:
+    - Decision Pathway Intelligence
+    - Impact Forecasting
+    - Authority-Aware Recommendations
+    
+    CRITICAL CONSTRAINTS:
+    - No surveillance, mandates, or investigative framing
+    - Pre-incident decision intelligence posture
+    - All outputs auditable and confidence-weighted
+    """
+    threat_id: str = Field(..., description="Associated threat object ID")
+    
+    decision_pathways: Optional[DecisionPathwayIntelligence] = Field(
+        None, description="Decision Pathway Intelligence"
+    )
+    
+    impact_forecast: Optional[ImpactForecast] = Field(
+        None, description="System-level Impact Forecast"
+    )
+    
+    authority_recommendations: Optional[AuthorityAwareRecommendations] = Field(
+        None, description="Authority-Aware Recommendations"
+    )
+    
+    overall_decision_posture: str = Field(
+        ..., description="Overall decision posture summary"
+    )
+    
+    confidence_weighted_priority: float = Field(
+        ..., ge=0, le=1, description="Confidence-weighted priority score"
+    )
+    
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    
+    master_disclaimer: str = Field(
+        default="The Decision Advantage Layer provides advisory guidance for leadership decision-making. All outputs are pre-incident, non-enforcement, and non-investigative. No surveillance, mandates, or identity attribution is included.",
+        description="Master disclaimer for entire layer"
+    )
+    
+    policy_compliance: list[str] = Field(
+        default_factory=lambda: [
+            "Pre-incident decision intelligence posture maintained",
+            "No enforcement, investigative, or surveillance outputs",
+            "No identity attribution",
+            "All recommendations auditable and confidence-weighted",
+            "Leadership retains full decision authority"
+        ],
+        description="Policy compliance confirmation"
     )

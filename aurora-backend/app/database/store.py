@@ -29,6 +29,10 @@ from app.models.schemas import (
     ThreatClassAlignment,
     ThreatClassAlignmentResult,
     SignalDomain,
+    DecisionPathwayCategory,
+    DecisionPathwayRelevance,
+    ImpactDomain,
+    AuthorityDomain,
 )
 
 
@@ -450,6 +454,323 @@ class InMemoryStore:
                     "No prediction of specific events or actions",
                     "No law-enforcement or investigative framing",
                     "Maintains pre-incident decision-intelligence posture"
+                ]
+            },
+            decision_advantage_layer={
+                "threat_id": "",
+                "decision_pathways": {
+                    "threat_id": "",
+                    "pathways": [
+                        {
+                            "pathway_category": DecisionPathwayCategory.ECONOMIC_ENGAGEMENT.value,
+                            "relevance": DecisionPathwayRelevance.HIGH.value,
+                            "relevance_score": 0.82,
+                            "advisory_summary": "Consider economic engagement strategies to address underlying structural stressors",
+                            "suggested_considerations": [
+                                "Review economic support mechanisms in affected areas",
+                                "Assess workforce development program alignment",
+                                "Evaluate community economic resilience indicators"
+                            ],
+                            "proportionality_note": "Economic engagement is most effective in early-stage patterns where structural stressors are primary drivers",
+                            "contributing_factors": [
+                                "Threat class alignment: Socioeconomic Instability",
+                                "Intent stage: Cognitive Fixation",
+                                "Threat probability: 67.3%"
+                            ],
+                            "confidence": 0.78
+                        },
+                        {
+                            "pathway_category": DecisionPathwayCategory.COMMUNITY_OUTREACH.value,
+                            "relevance": DecisionPathwayRelevance.HIGH.value,
+                            "relevance_score": 0.78,
+                            "advisory_summary": "Community outreach may help address grievance formation and build trust",
+                            "suggested_considerations": [
+                                "Identify trusted community intermediaries",
+                                "Assess communication channel effectiveness",
+                                "Review community feedback mechanisms"
+                            ],
+                            "proportionality_note": "Community outreach is proportional across all stages but most impactful before behavioral acceleration",
+                            "contributing_factors": [
+                                "Threat class alignment: Socioeconomic Instability",
+                                "Intent stage: Cognitive Fixation",
+                                "Threat probability: 67.3%"
+                            ],
+                            "confidence": 0.75
+                        },
+                        {
+                            "pathway_category": DecisionPathwayCategory.COMMUNICATIONS_STRATEGY.value,
+                            "relevance": DecisionPathwayRelevance.MODERATE.value,
+                            "relevance_score": 0.65,
+                            "advisory_summary": "Strategic communications may help counter narrative amplification and provide accurate information",
+                            "suggested_considerations": [
+                                "Review public messaging alignment with community concerns",
+                                "Assess information environment for misinformation patterns",
+                                "Evaluate proactive communication opportunities"
+                            ],
+                            "proportionality_note": "Communications strategy is particularly relevant when discourse amplification is detected",
+                            "contributing_factors": [
+                                "Threat class alignment: Socioeconomic Instability",
+                                "Intent stage: Cognitive Fixation",
+                                "Threat probability: 67.3%"
+                            ],
+                            "confidence": 0.68
+                        },
+                        {
+                            "pathway_category": DecisionPathwayCategory.STAKEHOLDER_COORDINATION.value,
+                            "relevance": DecisionPathwayRelevance.MODERATE.value,
+                            "relevance_score": 0.58,
+                            "advisory_summary": "Cross-stakeholder coordination may improve response coherence and resource alignment",
+                            "suggested_considerations": [
+                                "Identify key stakeholder groups and their concerns",
+                                "Assess coordination mechanisms and gaps",
+                                "Review information sharing protocols"
+                            ],
+                            "proportionality_note": "Stakeholder coordination becomes more critical as pattern complexity increases",
+                            "contributing_factors": [
+                                "Threat class alignment: Socioeconomic Instability",
+                                "Intent stage: Cognitive Fixation",
+                                "Threat probability: 67.3%"
+                            ],
+                            "confidence": 0.62
+                        },
+                        {
+                            "pathway_category": DecisionPathwayCategory.MONITORING_ADJUSTMENT.value,
+                            "relevance": DecisionPathwayRelevance.MODERATE.value,
+                            "relevance_score": 0.52,
+                            "advisory_summary": "Monitoring posture adjustments may improve situational awareness",
+                            "suggested_considerations": [
+                                "Review current monitoring coverage and gaps",
+                                "Assess information collection priorities",
+                                "Evaluate reporting frequency and channels"
+                            ],
+                            "proportionality_note": "Monitoring adjustments should be proportional to uncertainty levels and information gaps",
+                            "contributing_factors": [
+                                "Threat class alignment: Socioeconomic Instability",
+                                "Intent stage: Cognitive Fixation",
+                                "Threat probability: 67.3%"
+                            ],
+                            "confidence": 0.58
+                        }
+                    ],
+                    "primary_pathway": DecisionPathwayCategory.ECONOMIC_ENGAGEMENT.value,
+                    "overall_advisory_posture": "Elevated awareness posture. Consider proactive engagement through high-relevance pathways.",
+                    "proportionality_assessment": "Response proportionality should align with current threat probability (67.3%) and intent stage (Cognitive Fixation). All guidance remains advisory and optional.",
+                    "last_updated": datetime.utcnow().isoformat(),
+                    "disclaimer": "Decision pathways are advisory and optional. All guidance is proportional to assessed patterns and does not constitute enforcement direction or tactical instruction.",
+                    "policy_notes": [
+                        "All pathways are optional and advisory",
+                        "No enforcement or tactical instruction provided",
+                        "Guidance is proportional to assessed risk patterns",
+                        "Leadership retains full decision authority",
+                        "Pre-incident decision support only"
+                    ]
+                },
+                "impact_forecast": {
+                    "threat_id": "",
+                    "projections": [
+                        {
+                            "domain": ImpactDomain.ECONOMIC_RESILIENCE.value,
+                            "current_assessment": "Economic resilience under stress from structural factors",
+                            "projected_trajectory": "Persistent economic stress patterns may compound community vulnerability and grievance formation",
+                            "impact_severity": "significant",
+                            "impact_severity_score": 0.72,
+                            "time_horizon_hours": [72, 336],
+                            "confidence": 0.68,
+                            "confidence_band": [0.57, 0.87],
+                            "key_assumptions": [
+                                "Structural economic factors persist",
+                                "No targeted economic interventions"
+                            ],
+                            "mitigating_factors": [
+                                "Economic support mechanisms",
+                                "Workforce development programs",
+                                "Business assistance initiatives"
+                            ]
+                        },
+                        {
+                            "domain": ImpactDomain.COMMUNITY_STABILITY.value,
+                            "current_assessment": "Community stability indicators showing stress signals",
+                            "projected_trajectory": "Continued pattern escalation may increase community tension and reduce social cohesion",
+                            "impact_severity": "moderate",
+                            "impact_severity_score": 0.58,
+                            "time_horizon_hours": [72, 336],
+                            "confidence": 0.65,
+                            "confidence_band": [0.43, 0.73],
+                            "key_assumptions": [
+                                "Economic stressors remain unaddressed",
+                                "Discourse amplification continues"
+                            ],
+                            "mitigating_factors": [
+                                "Economic support programs",
+                                "Community dialogue initiatives",
+                                "Local leadership engagement"
+                            ]
+                        },
+                        {
+                            "domain": ImpactDomain.SOCIAL_COHESION.value,
+                            "current_assessment": "Social cohesion showing early stress indicators",
+                            "projected_trajectory": "Continued polarization patterns may reduce social cohesion and increase community fragmentation",
+                            "impact_severity": "moderate",
+                            "impact_severity_score": 0.52,
+                            "time_horizon_hours": [72, 336],
+                            "confidence": 0.62,
+                            "confidence_band": [0.37, 0.67],
+                            "key_assumptions": [
+                                "Polarizing discourse continues",
+                                "No cohesion-building interventions"
+                            ],
+                            "mitigating_factors": [
+                                "Cross-community dialogue programs",
+                                "Shared interest initiatives",
+                                "Inclusive communication strategies"
+                            ]
+                        },
+                        {
+                            "domain": ImpactDomain.INSTITUTIONAL_TRUST.value,
+                            "current_assessment": "Institutional trust levels within normal parameters",
+                            "projected_trajectory": "If current discourse patterns persist, institutional trust may experience erosion in affected communities",
+                            "impact_severity": "moderate",
+                            "impact_severity_score": 0.45,
+                            "time_horizon_hours": [72, 336],
+                            "confidence": 0.58,
+                            "confidence_band": [0.30, 0.60],
+                            "key_assumptions": [
+                                "Current discourse patterns continue",
+                                "No significant trust-building interventions occur"
+                            ],
+                            "mitigating_factors": [
+                                "Proactive transparent communication",
+                                "Community engagement initiatives",
+                                "Responsive grievance mechanisms"
+                            ]
+                        }
+                    ],
+                    "overall_impact_assessment": "System-level impact assessment indicates moderate potential consequences in key domains if current trajectory persists.",
+                    "primary_concern_domain": ImpactDomain.ECONOMIC_RESILIENCE.value,
+                    "aggregate_severity_score": 0.57,
+                    "projection_time_horizon": "72-336 hours (3.0-14.0 days)",
+                    "last_updated": datetime.utcnow().isoformat(),
+                    "disclaimer": "Impact projections are system-level estimates based on current trajectory patterns. They do not predict specific events, actors, or outcomes. All projections include uncertainty bounds.",
+                    "policy_notes": [
+                        "Projections focus on institutional and community outcomes",
+                        "No prediction of specific events or actors",
+                        "All projections include confidence bands and time horizons",
+                        "System-level analysis only, not individual attribution",
+                        "For decision support, not operational forecasting"
+                    ]
+                },
+                "authority_recommendations": {
+                    "threat_id": "",
+                    "recommendations": [
+                        {
+                            "authority_domain": AuthorityDomain.EXECUTIVE_LEADERSHIP.value,
+                            "relevance_score": 0.78,
+                            "positioning_rationale": "Executive leadership is positioned to provide strategic direction and authorize cross-functional responses",
+                            "suggested_awareness_areas": [
+                                "Overall threat pattern trajectory",
+                                "Resource allocation decisions",
+                                "External stakeholder communications"
+                            ],
+                            "coordination_considerations": [
+                                "Strategic Planning",
+                                "External Affairs",
+                                "Risk Management"
+                            ],
+                            "context_applicability": ["government", "enterprise", "multi-agency"],
+                            "confidence": 0.82
+                        },
+                        {
+                            "authority_domain": AuthorityDomain.COMMUNITY_RELATIONS.value,
+                            "relevance_score": 0.75,
+                            "positioning_rationale": "Community relations can engage trusted intermediaries and address grievance formation",
+                            "suggested_awareness_areas": [
+                                "Community sentiment indicators",
+                                "Trusted intermediary networks",
+                                "Grievance patterns"
+                            ],
+                            "coordination_considerations": [
+                                "Communications/Public Affairs",
+                                "External Affairs",
+                                "Executive Leadership"
+                            ],
+                            "context_applicability": ["government", "enterprise"],
+                            "confidence": 0.78
+                        },
+                        {
+                            "authority_domain": AuthorityDomain.COMMUNICATIONS_PUBLIC_AFFAIRS.value,
+                            "relevance_score": 0.68,
+                            "positioning_rationale": "Communications is positioned to manage public messaging and counter narrative amplification",
+                            "suggested_awareness_areas": [
+                                "Information environment dynamics",
+                                "Public sentiment indicators",
+                                "Messaging alignment needs"
+                            ],
+                            "coordination_considerations": [
+                                "Executive Leadership",
+                                "Community Relations",
+                                "Legal Compliance"
+                            ],
+                            "context_applicability": ["government", "enterprise", "multi-agency"],
+                            "confidence": 0.72
+                        },
+                        {
+                            "authority_domain": AuthorityDomain.RISK_MANAGEMENT.value,
+                            "relevance_score": 0.62,
+                            "positioning_rationale": "Risk management can assess threat patterns and recommend proportional mitigation measures",
+                            "suggested_awareness_areas": [
+                                "Threat probability trends",
+                                "Vulnerability assessments",
+                                "Mitigation option effectiveness"
+                            ],
+                            "coordination_considerations": [
+                                "Operations Management",
+                                "Executive Leadership",
+                                "Strategic Planning"
+                            ],
+                            "context_applicability": ["government", "enterprise", "multi-agency"],
+                            "confidence": 0.68
+                        },
+                        {
+                            "authority_domain": AuthorityDomain.STRATEGIC_PLANNING.value,
+                            "relevance_score": 0.55,
+                            "positioning_rationale": "Strategic planning can assess long-term implications and recommend adaptive strategies",
+                            "suggested_awareness_areas": [
+                                "Long-term trend implications",
+                                "Strategic option development",
+                                "Resource planning needs"
+                            ],
+                            "coordination_considerations": [
+                                "Executive Leadership",
+                                "Risk Management",
+                                "Operations Management"
+                            ],
+                            "context_applicability": ["government", "enterprise"],
+                            "confidence": 0.62
+                        }
+                    ],
+                    "primary_authority_domain": AuthorityDomain.EXECUTIVE_LEADERSHIP.value,
+                    "coordination_summary": "Cross-domain coordination recommended among: Strategic Planning, External Affairs, Risk Management, Communications/Public Affairs. Information sharing and aligned messaging are key coordination priorities.",
+                    "context_applicability": "all",
+                    "last_updated": datetime.utcnow().isoformat(),
+                    "disclaimer": "Authority recommendations identify leadership domains, not individuals or units. All recommendations are advisory and support decision-making without directing specific actions.",
+                    "policy_notes": [
+                        "No individuals, units, or enforcement targets named",
+                        "Domain-level recommendations only",
+                        "Supports government, enterprise, and multi-agency contexts",
+                        "Advisory only, not directive",
+                        "Leadership retains full decision authority"
+                    ]
+                },
+                "overall_decision_posture": "Elevated awareness with proactive engagement consideration",
+                "confidence_weighted_priority": 0.65,
+                "last_updated": datetime.utcnow().isoformat(),
+                "master_disclaimer": "The Decision Advantage Layer provides advisory guidance for leadership decision-making. All outputs are pre-incident, non-enforcement, and non-investigative. No surveillance, mandates, or identity attribution is included.",
+                "policy_compliance": [
+                    "Pre-incident decision intelligence posture maintained",
+                    "No enforcement, investigative, or surveillance outputs",
+                    "No identity attribution",
+                    "All recommendations auditable and confidence-weighted",
+                    "Leadership retains full decision authority"
                 ]
             },
             status="active"

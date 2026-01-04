@@ -144,6 +144,86 @@ interface ThreatClassAlignmentResult {
   policy_notes: string[];
 }
 
+interface DecisionPathway {
+  pathway_category: string;
+  relevance: string;
+  relevance_score: number;
+  advisory_summary: string;
+  suggested_considerations: string[];
+  proportionality_note: string;
+  contributing_factors: string[];
+  confidence: number;
+}
+
+interface DecisionPathwayIntelligence {
+  threat_id: string;
+  pathways: DecisionPathway[];
+  primary_pathway: string | null;
+  overall_advisory_posture: string;
+  proportionality_assessment: string;
+  last_updated: string;
+  disclaimer: string;
+  policy_notes: string[];
+}
+
+interface ImpactProjection {
+  domain: string;
+  current_assessment: string;
+  projected_trajectory: string;
+  impact_severity: string;
+  impact_severity_score: number;
+  time_horizon_hours: number[];
+  confidence: number;
+  confidence_band: number[];
+  key_assumptions: string[];
+  mitigating_factors: string[];
+}
+
+interface ImpactForecast {
+  threat_id: string;
+  projections: ImpactProjection[];
+  overall_impact_assessment: string;
+  primary_concern_domain: string | null;
+  aggregate_severity_score: number;
+  projection_time_horizon: string;
+  last_updated: string;
+  disclaimer: string;
+  policy_notes: string[];
+}
+
+interface AuthorityRecommendation {
+  authority_domain: string;
+  relevance_score: number;
+  positioning_rationale: string;
+  suggested_awareness_areas: string[];
+  coordination_considerations: string[];
+  context_applicability: string[];
+  confidence: number;
+}
+
+interface AuthorityAwareRecommendations {
+  threat_id: string;
+  recommendations: AuthorityRecommendation[];
+  primary_authority_domain: string | null;
+  coordination_summary: string;
+  context_applicability: string;
+  last_updated: string;
+  disclaimer: string;
+  policy_notes: string[];
+}
+
+interface DecisionAdvantageLayer {
+  threat_id: string;
+  decision_pathways: DecisionPathwayIntelligence | null;
+  impact_forecast: ImpactForecast | null;
+  authority_recommendations: AuthorityAwareRecommendations | null;
+  overall_decision_posture: string;
+  confidence_weighted_priority: number;
+  last_updated: string;
+  master_disclaimer: string;
+  policy_compliance: string[];
+}
+
 interface ThreatDetail {
   id: string;
   name: string;
@@ -158,6 +238,7 @@ interface ThreatDetail {
   region_context: RegionContext | null;
   escalation_pathway: EscalationPathway | null;
   threat_class_alignment: ThreatClassAlignmentResult | null;
+  decision_advantage_layer: DecisionAdvantageLayer | null;
   created_at: string;
   updated_at: string;
 }
@@ -235,7 +316,46 @@ const THREAT_CLASS_LABELS: Record<string, string> = {
   coordinated_disinformation: 'Coordinated Disinformation Amplification',
 };
 
-const getConfidenceOpacity = (confidence: number): string => {
+const DECISION_PATHWAY_LABELS: Record<string, string> = {
+  economic_engagement: 'Economic Engagement',
+  community_outreach: 'Community Outreach',
+  communications_strategy: 'Communications Strategy',
+  stakeholder_coordination: 'Stakeholder Coordination',
+  resource_positioning: 'Resource Positioning',
+  monitoring_adjustment: 'Monitoring Adjustment',
+  institutional_resilience: 'Institutional Resilience',
+  interagency_liaison: 'Interagency Liaison',
+};
+
+const IMPACT_DOMAIN_LABELS: Record<string, string> = {
+  institutional_trust: 'Institutional Trust',
+  community_stability: 'Community Stability',
+  operational_continuity: 'Operational Continuity',
+  economic_resilience: 'Economic Resilience',
+  social_cohesion: 'Social Cohesion',
+  infrastructure_integrity: 'Infrastructure Integrity',
+};
+
+const AUTHORITY_DOMAIN_LABELS: Record<string, string> = {
+  executive_leadership: 'Executive Leadership',
+  operations_management: 'Operations Management',
+  communications_public_affairs: 'Communications / Public Affairs',
+  community_relations: 'Community Relations',
+  risk_management: 'Risk Management',
+  legal_compliance: 'Legal / Compliance',
+  human_resources: 'Human Resources',
+  external_affairs: 'External Affairs',
+  strategic_planning: 'Strategic Planning',
+  interagency_coordination: 'Interagency Coordination',
+};
+
+const RELEVANCE_COLORS: Record<string, string> = {
+  high: 'bg-[#4F81BD]/20 text-[#4F81BD] border-[#4F81BD]/40',
+  moderate: 'bg-[#F4B400]/20 text-[#F4B400] border-[#F4B400]/40',
+  low: 'bg-[#7A8CA3]/20 text-[#7A8CA3] border-[#7A8CA3]/40',
+};
+
+const getConfidenceOpacity= (confidence: number): string => {
   if (confidence >= 0.7) return 'opacity-100';
   if (confidence >= 0.4) return 'opacity-80';
   return 'opacity-60';
@@ -1099,7 +1219,300 @@ function App() {
                       </Card>
                     )}
 
-                    {!selectedThreat.region_context && !selectedThreat.escalation_pathway && !selectedThreat.threat_class_alignment && (
+                    {selectedThreat.decision_advantage_layer && (
+                      <>
+                        <Card className="bg-[#121C2D] border-[#16233A]">
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg text-white flex items-center gap-2">
+                                  <Target className="h-5 w-5 text-[#4F81BD]" />
+                                  Decision Pathway Intelligence
+                                </CardTitle>
+                                <CardDescription className="text-[#9FB0C7]">
+                                  Advisory pathways ranked by relevance - optional, proportional guidance
+                                </CardDescription>
+                              </div>
+                              <Badge className="bg-[#4F81BD]/20 text-[#4F81BD] border-[#4F81BD]/40">
+                                Phase 3
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {selectedThreat.decision_advantage_layer.decision_pathways && (
+                              <>
+                                <div className="bg-[#16233A] rounded-lg p-4">
+                                  <div className="text-sm text-[#C9D4E3] leading-7 mb-3">
+                                    {selectedThreat.decision_advantage_layer.decision_pathways.overall_advisory_posture}
+                                  </div>
+                                  <div className="text-xs text-[#9FB0C7]">
+                                    {selectedThreat.decision_advantage_layer.decision_pathways.proportionality_assessment}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  {selectedThreat.decision_advantage_layer.decision_pathways.pathways.slice(0, 5).map((pathway, idx) => (
+                                    <div key={idx} className="bg-[#16233A] rounded-lg p-4 border-l-4" style={{ borderLeftColor: pathway.relevance === 'high' ? '#4F81BD' : pathway.relevance === 'moderate' ? '#F4B400' : '#7A8CA3' }}>
+                                      <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-white font-medium">
+                                            {DECISION_PATHWAY_LABELS[pathway.pathway_category] || pathway.pathway_category}
+                                          </span>
+                                          <Badge className={`text-xs border ${RELEVANCE_COLORS[pathway.relevance] || RELEVANCE_COLORS.low}`}>
+                                            {pathway.relevance.toUpperCase()}
+                                          </Badge>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="text-lg font-bold text-[#4F81BD]">
+                                            {(pathway.relevance_score * 100).toFixed(0)}%
+                                          </div>
+                                          <div className="text-xs text-[#9FB0C7]">relevance</div>
+                                        </div>
+                                      </div>
+                                      <p className="text-sm text-[#C9D4E3] leading-7 mb-2">{pathway.advisory_summary}</p>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Progress value={pathway.relevance_score * 100} className="h-1.5 flex-1" />
+                                        <span className="text-xs text-[#9FB0C7]">{(pathway.confidence * 100).toFixed(0)}% conf</span>
+                                      </div>
+                                      {pathway.suggested_considerations.length > 0 && (
+                                        <details className="mt-2">
+                                          <summary className="text-xs text-[#9FB0C7] cursor-pointer hover:text-[#C9D4E3]">
+                                            View considerations ({pathway.suggested_considerations.length})
+                                          </summary>
+                                          <div className="mt-2 space-y-1 pl-3 border-l border-[#7A8CA3]/30">
+                                            {pathway.suggested_considerations.map((consideration, cIdx) => (
+                                              <div key={cIdx} className="text-xs text-[#9FB0C7]">{consideration}</div>
+                                            ))}
+                                          </div>
+                                        </details>
+                                      )}
+                                      <div className="text-xs text-[#7A8CA3] mt-2 italic">{pathway.proportionality_note}</div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <Alert className="bg-[#0B1220] border-[#7A8CA3]/30">
+                                  <Shield className="h-4 w-4 text-[#7A8CA3]" />
+                                  <AlertTitle className="text-[#7A8CA3] text-sm">Advisory Disclaimer</AlertTitle>
+                                  <AlertDescription className="text-[#9FB0C7] text-xs">
+                                    {selectedThreat.decision_advantage_layer.decision_pathways.disclaimer}
+                                  </AlertDescription>
+                                </Alert>
+                              </>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        <Card className="bg-[#121C2D] border-[#16233A]">
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg text-white flex items-center gap-2">
+                                  <Activity className="h-5 w-5 text-[#F4B400]" />
+                                  Impact Forecasting
+                                </CardTitle>
+                                <CardDescription className="text-[#9FB0C7]">
+                                  System-level impact projections with time horizons and confidence bands
+                                </CardDescription>
+                              </div>
+                              <Badge className="bg-[#F4B400]/20 text-[#F4B400] border-[#F4B400]/40">
+                                Phase 3
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {selectedThreat.decision_advantage_layer.impact_forecast && (
+                              <>
+                                <div className="bg-[#16233A] rounded-lg p-4">
+                                  <div className="text-sm text-[#C9D4E3] leading-7 mb-2">
+                                    {selectedThreat.decision_advantage_layer.impact_forecast.overall_impact_assessment}
+                                  </div>
+                                  <div className="flex items-center gap-4 text-xs text-[#9FB0C7]">
+                                    <span>Time Horizon: {selectedThreat.decision_advantage_layer.impact_forecast.projection_time_horizon}</span>
+                                    <span>Aggregate Severity: {(selectedThreat.decision_advantage_layer.impact_forecast.aggregate_severity_score * 100).toFixed(0)}%</span>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  {selectedThreat.decision_advantage_layer.impact_forecast.projections.slice(0, 5).map((projection, idx) => (
+                                    <div key={idx} className="bg-[#16233A] rounded-lg p-4">
+                                      <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                          <span className="text-white font-medium">
+                                            {IMPACT_DOMAIN_LABELS[projection.domain] || projection.domain}
+                                          </span>
+                                          <Badge className={`ml-2 text-xs ${
+                                            projection.impact_severity === 'high' ? 'bg-[#E5533D]/20 text-[#E5533D] border-[#E5533D]/40' :
+                                            projection.impact_severity === 'moderate' ? 'bg-[#F4B400]/20 text-[#F4B400] border-[#F4B400]/40' :
+                                            'bg-[#4F81BD]/20 text-[#4F81BD] border-[#4F81BD]/40'
+                                          }`}>
+                                            {projection.impact_severity.toUpperCase()}
+                                          </Badge>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="text-lg font-bold text-[#F4B400]">
+                                            {(projection.impact_severity_score * 100).toFixed(0)}%
+                                          </div>
+                                          <div className="text-xs text-[#9FB0C7]">severity</div>
+                                        </div>
+                                      </div>
+                                      <p className="text-sm text-[#9FB0C7] mb-1">{projection.current_assessment}</p>
+                                      <p className="text-sm text-[#C9D4E3] leading-7 mb-2">{projection.projected_trajectory}</p>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Progress value={projection.impact_severity_score * 100} className="h-1.5 flex-1" />
+                                        <span className="text-xs text-[#9FB0C7]">
+                                          {(projection.confidence * 100).toFixed(0)}% conf ({projection.confidence_band[0].toFixed(0)}-{projection.confidence_band[1].toFixed(0)}%)
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-[#7A8CA3]">
+                                        Time Horizon: {projection.time_horizon_hours[0]}-{projection.time_horizon_hours[1]} hours
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <Alert className="bg-[#0B1220] border-[#7A8CA3]/30">
+                                  <Shield className="h-4 w-4 text-[#7A8CA3]" />
+                                  <AlertTitle className="text-[#7A8CA3] text-sm">Forecast Disclaimer</AlertTitle>
+                                  <AlertDescription className="text-[#9FB0C7] text-xs">
+                                    {selectedThreat.decision_advantage_layer.impact_forecast.disclaimer}
+                                  </AlertDescription>
+                                </Alert>
+                              </>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        <Card className="bg-[#121C2D] border-[#16233A]">
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg text-white flex items-center gap-2">
+                                  <Brain className="h-5 w-5 text-[#3EC1C9]" />
+                                  Authority-Aware Recommendations
+                                </CardTitle>
+                                <CardDescription className="text-[#9FB0C7]">
+                                  Leadership domains best positioned to respond - no individual naming
+                                </CardDescription>
+                              </div>
+                              <Badge className="bg-[#3EC1C9]/20 text-[#3EC1C9] border-[#3EC1C9]/40">
+                                Phase 3
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {selectedThreat.decision_advantage_layer.authority_recommendations && (
+                              <>
+                                <div className="bg-[#16233A] rounded-lg p-4">
+                                  <div className="text-sm text-[#C9D4E3] leading-7 mb-2">
+                                    {selectedThreat.decision_advantage_layer.authority_recommendations.coordination_summary}
+                                  </div>
+                                  <div className="text-xs text-[#9FB0C7]">
+                                    Context: {selectedThreat.decision_advantage_layer.authority_recommendations.context_applicability}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  {selectedThreat.decision_advantage_layer.authority_recommendations.recommendations.slice(0, 5).map((rec, idx) => (
+                                    <div key={idx} className="bg-[#16233A] rounded-lg p-4 border-l-4" style={{ borderLeftColor: '#3EC1C9' }}>
+                                      <div className="flex items-start justify-between mb-2">
+                                        <span className="text-white font-medium">
+                                          {AUTHORITY_DOMAIN_LABELS[rec.authority_domain] || rec.authority_domain}
+                                        </span>
+                                        <div className="text-right">
+                                          <div className="text-lg font-bold text-[#3EC1C9]">
+                                            {(rec.relevance_score * 100).toFixed(0)}%
+                                          </div>
+                                          <div className="text-xs text-[#9FB0C7]">positioning</div>
+                                        </div>
+                                      </div>
+                                      <p className="text-sm text-[#C9D4E3] leading-7 mb-2">{rec.positioning_rationale}</p>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Progress value={rec.relevance_score * 100} className="h-1.5 flex-1" />
+                                        <span className="text-xs text-[#9FB0C7]">{(rec.confidence * 100).toFixed(0)}% conf</span>
+                                      </div>
+                                      {rec.suggested_awareness_areas.length > 0 && (
+                                        <details className="mt-2">
+                                          <summary className="text-xs text-[#9FB0C7] cursor-pointer hover:text-[#C9D4E3]">
+                                            View awareness areas ({rec.suggested_awareness_areas.length})
+                                          </summary>
+                                          <div className="mt-2 space-y-1 pl-3 border-l border-[#7A8CA3]/30">
+                                            {rec.suggested_awareness_areas.map((area, aIdx) => (
+                                              <div key={aIdx} className="text-xs text-[#9FB0C7]">{area}</div>
+                                            ))}
+                                          </div>
+                                        </details>
+                                      )}
+                                      <div className="flex flex-wrap gap-1 mt-2">
+                                        {rec.context_applicability.map((ctx, ctxIdx) => (
+                                          <Badge key={ctxIdx} variant="outline" className="border-[#3EC1C9]/30 text-[#3EC1C9] text-xs">
+                                            {ctx}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <Alert className="bg-[#0B1220] border-[#7A8CA3]/30">
+                                  <Shield className="h-4 w-4 text-[#7A8CA3]" />
+                                  <AlertTitle className="text-[#7A8CA3] text-sm">Authority Disclaimer</AlertTitle>
+                                  <AlertDescription className="text-[#9FB0C7] text-xs">
+                                    {selectedThreat.decision_advantage_layer.authority_recommendations.disclaimer}
+                                  </AlertDescription>
+                                </Alert>
+                              </>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        <Card className="bg-[#121C2D] border-[#16233A]">
+                          <CardHeader>
+                            <CardTitle className="text-lg text-white flex items-center gap-2">
+                              <Shield className="h-5 w-5 text-[#7A8CA3]" />
+                              Decision Advantage Summary
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="bg-[#16233A] rounded-lg p-4">
+                                <div className="text-xs text-[#9FB0C7] mb-1">Overall Decision Posture</div>
+                                <div className="text-sm text-[#C9D4E3] leading-7">
+                                  {selectedThreat.decision_advantage_layer.overall_decision_posture}
+                                </div>
+                              </div>
+                              <div className="bg-[#16233A] rounded-lg p-4">
+                                <div className="text-xs text-[#9FB0C7] mb-1">Confidence-Weighted Priority</div>
+                                <div className="text-2xl font-bold text-white">
+                                  {(selectedThreat.decision_advantage_layer.confidence_weighted_priority * 100).toFixed(0)}%
+                                </div>
+                              </div>
+                            </div>
+
+                            <Alert className="bg-[#0B1220] border-[#F4B400]/30">
+                              <AlertTriangle className="h-4 w-4 text-[#F4B400]" />
+                              <AlertTitle className="text-[#F4B400] text-sm">Master Disclaimer</AlertTitle>
+                              <AlertDescription className="text-[#9FB0C7] text-xs">
+                                {selectedThreat.decision_advantage_layer.master_disclaimer}
+                              </AlertDescription>
+                            </Alert>
+
+                            <div className="bg-[#16233A] rounded-lg p-3">
+                              <div className="text-xs text-[#9FB0C7] mb-2">Policy Compliance</div>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedThreat.decision_advantage_layer.policy_compliance.map((note, idx) => (
+                                  <Badge key={idx} variant="outline" className="border-[#7A8CA3]/30 text-[#9FB0C7] text-xs">
+                                    {note}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </>
+                    )}
+
+                    {!selectedThreat.region_context && !selectedThreat.escalation_pathway && !selectedThreat.threat_class_alignment && !selectedThreat.decision_advantage_layer && (
                       <Alert className="bg-[#16233A] border-[#16233A]">
                         <AlertTriangle className="h-4 w-4 text-[#F4B400]" />
                         <AlertTitle className="text-white">Situational Awareness Data Unavailable</AlertTitle>
