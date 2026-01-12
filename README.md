@@ -400,9 +400,77 @@ VITE_API_URL=http://localhost:8000
 - **Backend API**: https://app-umjbrpgo.fly.dev
 - **API Docs**: https://app-umjbrpgo.fly.dev/docs
 
+## Operational Continuity & Runtime Behavior
+
+### State Persistence (IMPORTANT)
+
+**Current Implementation: In-Memory Data Store**
+
+The current AURORA implementation uses an in-memory data store for demonstration and proof-of-concept purposes. This means:
+
+- **Context state** (relevance, confidence, intent stage): **EPHEMERAL** - resets on restart
+- **Context aging / decay timestamps**: **EPHEMERAL** - resets on restart
+- **Provenance labels**: **EPHEMERAL** - resets on restart
+- **Audit logs**: **EPHEMERAL** - resets on restart
+- **Live Data Mode (ON_US_ONLY)**: **EPHEMERAL** - resets to OFF on restart
+- **Ingested live data**: **EPHEMERAL** - lost on restart
+
+**A restart will RESET state, not resume.**
+
+This is acceptable for demonstration, validation, and stakeholder review purposes. Production deployment would require persistent storage (database).
+
+### Background Operation Status
+
+The following describes the current runtime behavior:
+
+- [ ] Live data ingestion runs continuously via background workers - **NOT IMPLEMENTED**
+- [x] Live data ingestion runs only when the backend is active - **CURRENT BEHAVIOR**
+- [x] Live data ingestion pauses if the service sleeps or restarts - **CURRENT BEHAVIOR**
+
+**Current Behavior:**
+- Live data ingestion is API-driven (on-demand via POST endpoints)
+- No background workers or continuous polling
+- Backend must be active to receive ingestion requests
+- Service restart resets all state to demo defaults
+- System does not require UI to be open to function (API-first design)
+
+### Deployment Stability
+
+- Backend service can restart without data loss: **NO** (in-memory store resets)
+- Frontend redeploy does not affect backend state: **YES** (independent deployments)
+- API ingestion endpoints remain governed after redeploy: **YES** (governance logic in code)
+- No dependency on UI traffic for ingestion logic: **YES** (API-first design)
+
+## Feature Freeze (v1.4.2+)
+
+**FEATURE FREEZE IN EFFECT**
+
+As of v1.4.2-stability-preserved, the following constraints apply:
+
+**ALLOWED:**
+- Bug fixes
+- Stability improvements
+- Documentation updates
+
+**NOT ALLOWED:**
+- No new features
+- No tuning
+- No new data sources
+- No alerting or UI expansion
+
+This freeze remains until explicitly lifted by the project owner.
+
 ## Version History
 
-- **v1.4.1-live-us-data-enabled** (Current): Complete Phase 1 + Phase 2 + Phase 3 + Phase 3.x + Phase 4 + Phase 1.4 + Phase 1.4.1 implementation
+- **v1.4.2-stability-preserved** (Current): Stability and preservation release
+  - All v1.4.1 features preserved
+  - Documented operational continuity and runtime behavior
+  - Documented state persistence (ephemeral in-memory store)
+  - Documented background operation status (API-driven, no background workers)
+  - Feature freeze in effect (bug fixes, stability, docs only)
+  - No new features, tuning, data sources, or alerting
+
+- **v1.4.1-live-us-data-enabled**: Complete Phase 1 + Phase 2 + Phase 3 + Phase 3.x + Phase 4 + Phase 1.4 + Phase 1.4.1 implementation
   - All v1.4 features plus:
   - Live Data Mode enabled (ON_US_ONLY)
   - Live input sources for three allowed classes (Structural/Economic, Abstracted Discourse, Institutional/Policy)
