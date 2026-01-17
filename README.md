@@ -400,6 +400,76 @@ VITE_API_URL=http://localhost:8000
 - **Backend API**: https://app-umjbrpgo.fly.dev
 - **API Docs**: https://app-umjbrpgo.fly.dev/docs
 
+## Repository Preservation & Runtime State
+
+### Repository as Source of Truth
+
+The GitHub repository is the single authoritative source for all AURORA system-defining artifacts. The following are fully preserved in version control:
+
+**System Logic & Intelligence Pipelines:**
+- Weak-signal convergence engine (`aurora-backend/app/modules/correlation/engine.py`)
+- Intent gradient modeling (`aurora-backend/app/modules/intent_modeling/engine.py`)
+- Narrative intelligence generation (`aurora-backend/app/modules/narrative_generation/engine.py`)
+- Signal ingestion engine (`aurora-backend/app/modules/signal_ingestion/engine.py`)
+- Threat class alignment (`aurora-backend/app/modules/threat_class/engine.py`)
+- Decision advantage engine (`aurora-backend/app/modules/decision_advantage/engine.py`)
+
+**Governance Rules & Enforcement:**
+- Live data governance engine (`aurora-backend/app/modules/live_data_governance/engine.py`)
+- Live data source handlers (`aurora-backend/app/modules/live_data_governance/sources.py`)
+- Input validation and fail-safe controls
+- Velocity dampening, domain balance, escalation ceilings
+- Confidence collapse handling
+
+**Decision Discipline & Explainability:**
+- Decision confidence gate logic
+- Decision readiness levels (DRL-0 to DRL-3)
+- Context aging and decay calculations
+- Explainability panel generation
+
+**UI Behavior & Restraint Rules:**
+- Frontend application (`aurora-frontend/src/App.tsx`)
+- Context-aware color intelligence
+- Visual restraint rules (no animations, no urgency indicators)
+
+**API Schemas & Contracts:**
+- All Pydantic models (`aurora-backend/app/models/schemas.py`)
+- API routes and endpoints (`aurora-backend/app/api/routes.py`)
+
+**Documentation:**
+- README with true runtime behavior
+- Version history and rollback instructions
+
+**No system-defining logic exists only in a running instance.**
+
+### What is NOT in the Repository (Intentionally)
+
+The following are intentionally excluded from version control:
+
+- **Live data**: No ingested data is committed
+- **Context state**: No runtime context, confidence, or intent stage data
+- **Audit logs**: No runtime audit entries
+- **Environment secrets**: No API keys, tokens, or credentials
+- **Build artifacts**: No `dist/`, `node_modules/`, or compiled files
+
+The repository remains clean, deterministic, and rebuildable from source.
+
+### Ephemeral vs Persistent
+
+| Artifact | Location | Persistence |
+|----------|----------|-------------|
+| System logic | Repository | Permanent (version controlled) |
+| Governance rules | Repository | Permanent (version controlled) |
+| API schemas | Repository | Permanent (version controlled) |
+| UI behavior | Repository | Permanent (version controlled) |
+| Documentation | Repository | Permanent (version controlled) |
+| Runtime context state | Memory | Ephemeral (lost on restart) |
+| Ingested live data | Memory | Ephemeral (lost on restart) |
+| Audit logs | Memory | Ephemeral (lost on restart) |
+| Live Data Mode setting | Memory | Ephemeral (resets to OFF) |
+
+**Runtime state resets on restart by design.** This is acceptable for demonstration purposes. Persistence requires explicit infrastructure changes (database integration).
+
 ## Operational Continuity & Runtime Behavior
 
 ### State Persistence (IMPORTANT)
